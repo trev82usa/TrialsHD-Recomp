@@ -56,14 +56,21 @@ package is in the same folder.
 
 ### 2. Extract the files
 
-You need [Python 3](https://www.python.org/downloads/) (no extra packages). Download this repository
-(**Code → Download ZIP**), open a terminal in its folder and run:
+**Easiest:** open the package file in **Velocity** or **Horizon** (the same tools as above), which
+show its contents, and extract everything to a folder.
+
+Disc-image tools such as extract-xiso won't work: Trials HD is a download, stored as an STFS
+package rather than a disc image (ISO).
+
+**Or with the included script:** you need [Python 3](https://www.python.org/downloads/) (no extra
+packages). Download this repository (**Code → Download ZIP**), open a terminal in its folder and run:
 
 ```
 python tools/stfs_extract.py "<path to the package file>" extracted
 ```
 
-This checks every block of the package and writes the contents to the `extracted` folder:
+This checks every block of the package and writes the contents to the `extracted` folder. Either
+way you end up with:
 
 ```
 extracted/
