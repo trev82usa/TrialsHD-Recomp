@@ -1,0 +1,19 @@
+# Trials HD settings (ReXGlue options). Keep this file next to trialshd.exe.
+
+# Host GPU occlusion queries make the CPU wait for the GPU on every query (thousands per second
+# in Trials HD). Off = report every query as visible, as upstream Xenia does by default.
+occlusion_query_enable = false
+
+# Reading GPU shader writes back to the CPU makes the CPU wait for the GPU. Off is upstream
+# Xenia's default. Set to true if something looks wrong or missing (e.g. particles).
+readback_memexport = false
+
+# Logging: "warn" keeps the log small. Use "info" or "debug" when reporting a problem.
+log_level = "warn"
+
+# Full game rather than the Xbox Live Arcade trial (also set in code).
+license_mask = 4294967295
+
+# Performance diagnostics: writes profile.txt next to the exe every 10 seconds showing where the
+# CPU time goes. Costs a little speed; set to false once it is no longer needed.
+trialshd_profile = false

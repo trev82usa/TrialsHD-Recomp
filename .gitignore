@@ -1,0 +1,16 @@
+# Game files: never commit anything from your copy of the game
+private/*
+!private/README.md
+extracted/
+*.xex
+*.pe
+*.pak
+*.xwb
+*.xsb
+*.xus
+
+# Build output
+rexglue/generated/default/
+rexglue/assets/
+rexglue/out/
+build/

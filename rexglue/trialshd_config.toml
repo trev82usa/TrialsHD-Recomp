@@ -1,0 +1,146 @@
+# Trials HD fixes on top of ReXGlue's automatic analysis.
+
+# The game's setjmp/longjmp (MSVC CRT; used e.g. by libpng error handling). Recompiled code must
+# redirect these to native implementations; running them as ordinary guest code returns to the
+# wrong place with clobbered registers (seen on hardware as a null r31 in sub_8232B608).
+setjmp_address = 0x822FA320
+longjmp_address = 0x822FA000
+
+# Speed: keep these PowerPC registers in C++ locals (CPU registers) instead of the shared context
+# struct, so the compiler can optimise them. Volatile/argument registers only; the non-volatile and
+# reserved ones stay in the context because setjmp/longjmp and thread switches rely on them.
+# NOT non_argument_as_local: this game passes values between functions in r12 (the stack probe at
+# 0x822FB134 takes the size in r12; exception funclets get the frame pointer in r12). Making r12 a
+# local zeroes it and the game hangs on a black screen at startup.
+ctr_as_local = true
+xer_as_local = true
+cr_as_local = true
+skip_msr = true
+
+[functions]
+# C++ "this-adjust" thunk (addi r3,r3,8; b ...) that another thunk jumps into
+0x821C3170 = { name = "thunk_adjust_this_821C3170", size = 8 }
+# Function starts reached only by tail calls
+0x8221C0F8 = { name = "sub_8221C0F8" }
+0x821DD448 = { name = "sub_821DD448" }
+
+# Code reached only through pointers in data (vtables, callback/handler tables); found by
+# tools/find_data_code_ptrs.py. Without these, indirect calls hit 'unregistered function'.
+0x820FF170 = { name = "sub_820FF170" }
+0x820FF4C8 = { name = "sub_820FF4C8" }
+0x821000E8 = { name = "sub_821000E8" }
+0x82109078 = { name = "sub_82109078" }
+0x82119C68 = { name = "sub_82119C68" }
+0x82129E80 = { name = "sub_82129E80" }
+0x8212B624 = { name = "sub_8212B624" }
+0x8212B79C = { name = "sub_8212B79C" }
+0x82151B90 = { name = "sub_82151B90" }
+0x82160150 = { name = "sub_82160150" }
+0x821622A8 = { name = "sub_821622A8" }
+0x821C0DB0 = { name = "sub_821C0DB0" }
+0x821C6940 = { name = "sub_821C6940" }
+0x821C6948 = { name = "sub_821C6948" }
+0x821C6950 = { name = "sub_821C6950" }
+0x821C6958 = { name = "sub_821C6958" }
+0x821C6960 = { name = "sub_821C6960" }
+0x821C6970 = { name = "sub_821C6970" }
+0x821CB4C8 = { name = "sub_821CB4C8" }
+0x821CB4D0 = { name = "sub_821CB4D0" }
+0x821CB4E0 = { name = "sub_821CB4E0" }
+0x821CB4E8 = { name = "sub_821CB4E8" }
+0x821CB770 = { name = "sub_821CB770" }
+0x821CB778 = { name = "sub_821CB778" }
+0x821CB788 = { name = "sub_821CB788" }
+0x821CB790 = { name = "sub_821CB790" }
+0x821CB798 = { name = "sub_821CB798" }
+0x821CB7A0 = { name = "sub_821CB7A0" }
+0x821CB7A8 = { name = "sub_821CB7A8" }
+0x821CBEE0 = { name = "sub_821CBEE0" }
+0x821CCC30 = { name = "sub_821CCC30" }
+0x821CDA40 = { name = "sub_821CDA40" }
+0x821D0848 = { name = "sub_821D0848" }
+0x821DB100 = { name = "sub_821DB100" }
+0x821DDCD8 = { name = "sub_821DDCD8" }
+0x821E0938 = { name = "sub_821E0938" }
+0x82210958 = { name = "sub_82210958" }
+0x822163E0 = { name = "sub_822163E0" }
+0x82224E08 = { name = "sub_82224E08" }
+0x822353B4 = { name = "sub_822353B4" }
+0x822356D0 = { name = "sub_822356D0" }
+0x82235774 = { name = "sub_82235774" }
+0x822359DC = { name = "sub_822359DC" }
+0x82235C7C = { name = "sub_82235C7C" }
+0x822361D4 = { name = "sub_822361D4" }
+0x8223676C = { name = "sub_8223676C" }
+0x822367DC = { name = "sub_822367DC" }
+0x8223690C = { name = "sub_8223690C" }
+0x82236BAC = { name = "sub_82236BAC" }
+0x82236F18 = { name = "sub_82236F18" }
+0x82237720 = { name = "sub_82237720" }
+0x8223EED8 = { name = "sub_8223EED8" }
+0x8223EEF8 = { name = "sub_8223EEF8" }
+0x8223EF18 = { name = "sub_8223EF18" }
+0x8223F0B0 = { name = "sub_8223F0B0" }
+0x8223F0D0 = { name = "sub_8223F0D0" }
+0x8223F0F0 = { name = "sub_8223F0F0" }
+0x8223F110 = { name = "sub_8223F110" }
+0x8223F130 = { name = "sub_8223F130" }
+0x8223F150 = { name = "sub_8223F150" }
+0x8223F170 = { name = "sub_8223F170" }
+0x8223F190 = { name = "sub_8223F190" }
+0x8223F1B0 = { name = "sub_8223F1B0" }
+0x8223F1D0 = { name = "sub_8223F1D0" }
+0x82246220 = { name = "sub_82246220" }
+0x822FD024 = { name = "sub_822FD024" }
+0x822FD77C = { name = "sub_822FD77C" }
+0x82308C00 = { name = "sub_82308C00" }
+0x82355AE8 = { name = "sub_82355AE8" }
+0x82355B04 = { name = "sub_82355B04" }
+0x82355C60 = { name = "sub_82355C60" }
+0x82355FCC = { name = "sub_82355FCC" }
+0x8235610C = { name = "sub_8235610C" }
+0x823567CC = { name = "sub_823567CC" }
+0x82356D24 = { name = "sub_82356D24" }
+0x8237F2D4 = { name = "sub_8237F2D4" }
+0x823A3180 = { name = "sub_823A3180" }
+0x823A3440 = { name = "sub_823A3440" }
+0x823A3468 = { name = "sub_823A3468" }
+0x823A3490 = { name = "sub_823A3490" }
+0x823A34B8 = { name = "sub_823A34B8" }
+0x823A38E8 = { name = "sub_823A38E8" }
+0x82411578 = { name = "sub_82411578" }
+0x82413738 = { name = "sub_82413738" }
+0x82413774 = { name = "sub_82413774" }
+0x824141B8 = { name = "sub_824141B8" }
+0x82414318 = { name = "sub_82414318" }
+0x8242DDFC = { name = "sub_8242DDFC" }
+0x8242DE0C = { name = "sub_8242DE0C" }
+0x824DC1E8 = { name = "sub_824DC1E8" }
+0x8250BCD8 = { name = "sub_8250BCD8" }
+0x82516928 = { name = "sub_82516928" }
+0x82583E88 = { name = "sub_82583E88" }
+0x82585A68 = { name = "sub_82585A68" }
+0x82585AC8 = { name = "sub_82585AC8" }
+0x8264BF10 = { name = "sub_8264BF10" }
+
+# Callback functions whose address is built in code (lis/addi) and handed out at runtime;
+# found by tools/find_code_built_ptrs.py. First hit at 0x820F0868 on real hardware.
+0x820F0868 = { name = "sub_820F0868" }
+0x82188DB0 = { name = "sub_82188DB0" }
+0x82240A48 = { name = "sub_82240A48" }
+0x822F5FFC = { name = "sub_822F5FFC" }
+0x823A3908 = { name = "sub_823A3908" }
+0x823A3918 = { name = "sub_823A3918" }
+0x823A3928 = { name = "sub_823A3928" }
+0x823A3938 = { name = "sub_823A3938" }
+0x823A3948 = { name = "sub_823A3948" }
+0x823A3958 = { name = "sub_823A3958" }
+0x823A3968 = { name = "sub_823A3968" }
+0x823A3978 = { name = "sub_823A3978" }
+0x823A3988 = { name = "sub_823A3988" }
+0x823A3998 = { name = "sub_823A3998" }
+0x82427318 = { name = "sub_82427318" }
+0x8245CE10 = { name = "sub_8245CE10" }
+
+# Round 1: more pointer-referenced functions (re-scan after the analysis regrouped code)
+0x82675BA8 = { name = "sub_82675BA8" }

@@ -1,0 +1,120 @@
+name: Build TrialsHD.exe (Windows, ReXGlue)
+
+on:
+  push:
+  workflow_dispatch:
+
+env:
+  REXGLUE_VERSION: 0.9.0
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The public repository has no game files, so it has nothing to build. In your private
+      # copy (see README) private/default.xex is present and the build runs.
+      - name: Check for the game executable
+        run: |
+          if [ ! -f private/default.xex ]; then
+            echo "::notice::private/default.xex not found - nothing to build. See README: build from a private copy with your own game files."
+            echo "HAVE_XEX=0" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          echo "HAVE_XEX=1" >> "$GITHUB_ENV"
+          mkdir -p rexglue/assets
+          cp private/default.xex rexglue/assets/default.xex
+
+      - name: Install LLVM (Clang 20+) and Ninja
+        if: env.HAVE_XEX == '1'
+        shell: pwsh
+        run: choco install llvm ninja -y --no-progress
+
+      - name: Set up MSVC environment (linker + Windows SDK)
+        if: env.HAVE_XEX == '1'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Download ReXGlue SDK
+        if: env.HAVE_XEX == '1'
+        run: |
+          curl -sSL -o sdk.zip "https://github.com/rexglue/rexglue-sdk/releases/download/v${REXGLUE_VERSION}/rexglue-sdk-${REXGLUE_VERSION}-win-amd64.zip"
+          7z x -y -o"$RUNNER_TEMP/rexsdk" sdk.zip > /dev/null
+          ls "$RUNNER_TEMP/rexsdk"
+          echo "REXSDK=$RUNNER_TEMP/rexsdk/win-amd64" >> "$GITHUB_ENV"
+
+      - name: Show toolchain
+        if: env.HAVE_XEX == '1'
+        run: |
+          export PATH="/c/Program Files/LLVM/bin:$PATH"
+          clang --version
+          cmake --version
+          ninja --version
+          "$REXSDK/bin/rexglue.exe" --version
+
+      - name: Generate C++ from default.xex (rexglue codegen)
+        if: env.HAVE_XEX == '1'
+        working-directory: rexglue
+        run: |
+          "$REXSDK/bin/rexglue.exe" codegen trialshd_manifest.toml 2>&1 | tee codegen.log
+          test "${PIPESTATUS[0]}" = 0
+
+      - name: Build
+        if: env.HAVE_XEX == '1'
+        working-directory: rexglue
+        run: |
+          export PATH="/c/Program Files/LLVM/bin:$PATH"
+          cmake -S . -B out -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_CXX_FLAGS="-march=x86-64-v2 -gline-tables-only -gcodeview" \
+            -DCMAKE_EXE_LINKER_FLAGS="-g" \
+            -DCMAKE_PREFIX_PATH="$REXSDK"
+          cmake --build out
+
+      - name: Package
+        if: env.HAVE_XEX == '1'
+        run: |
+          mkdir -p package/TrialsHD/assets
+          cp rexglue/out/*.exe rexglue/out/*.dll rexglue/trialshd.toml package/TrialsHD/
+          cat > package/TrialsHD/README.txt <<'EOF'
+          Trials HD - native Windows build (ReXGlue)
+
+          1. Copy your extracted game files (default.xex and the data folder) into the
+             "assets" folder next to trialshd.exe.
+          2. Double-click trialshd.exe.
+          3. If anything goes wrong, send crash.txt (if present) and the newest file from "logs".
+          EOF
+          ls -la package/TrialsHD
+
+      - name: Upload TrialsHD.exe
+        if: env.HAVE_XEX == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: TrialsHD-windows
+          retention-days: 14
+          path: package/
+
+      - name: Upload symbols (for reading crash.txt; not needed to play)
+        if: env.HAVE_XEX == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: symbols
+          retention-days: 14
+          path: rexglue/out/*.pdb
+          if-no-files-found: warn
+
+      - name: Upload codegen log
+        if: always() && env.HAVE_XEX == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: codegen-log
+          retention-days: 14
+          path: rexglue/codegen.log
+          if-no-files-found: ignore
