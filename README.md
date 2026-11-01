@@ -5,9 +5,10 @@ A native Windows port of **Trials HD** (Xbox Live Arcade, 2009) made by static r
 to C++ and compiled into a normal Windows executable, with Xbox 360 graphics and audio handled by
 ReXGlue's runtime (D3D12).
 
-> **This repository contains no game code or data.** You need your own legally obtained copy of
-> Trials HD. Do not open issues or pull requests containing game files, and do not share builds:
-> a built `trialshd.exe` contains the game's recompiled code.
+> **No game data is included anywhere in this project.** You need your own legally obtained copy
+> of Trials HD. Please don't post game files, or links to them, in issues or pull requests.
+>
+> Not affiliated with or endorsed by Ubisoft, RedLynx or Microsoft.
 
 ## Status
 
@@ -15,10 +16,28 @@ ReXGlue's runtime (D3D12).
 - Holds 60 FPS at any resolution on a mid-range PC (tested: Radeon RX 6750 XT)
 - Short hitch when a track loads; some engine threads use more CPU than they should
 
-## Building (no local tools needed)
+## Download and play
 
-GitHub Actions builds the game for you, but only in a **private** copy of this repository, because
-the build needs your game's `default.xex`.
+1. Download **TrialsHD.rar** from the [latest release](../../releases/latest) and extract it.
+2. Get your game files: `default.xex` and the `data` folder from your copy of Trials HD. The XBLA
+   package is an Xbox 360 STFS (LIVE) file; extract it with
+   `python tools/stfs_extract.py <your Trials HD package file> extracted`.
+3. Copy `default.xex` and `data` into the `assets` folder next to `trialshd.exe`.
+4. Run `trialshd.exe`.
+
+Requirements: 64-bit Windows 10/11, a DirectX 12 graphics card, a CPU with SSE4.2 (2009 or later),
+and the [Microsoft Visual C++ Redistributable (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe)
+(install it if Windows says `MSVCP140.dll` or `VCRUNTIME140.dll` is missing).
+
+In game: **F3** shows the FPS overlay, **F4** opens settings. Options live in `trialshd.toml`.
+If it crashes, `crash.txt` and the newest file in `logs` show what happened; include them in an issue.
+
+Saves and the shader cache are stored in your Windows user folder, not next to the exe.
+
+## Building it yourself (no local tools needed)
+
+GitHub Actions can build the exe for you in a **private** copy of this repository (the build needs
+your game's `default.xex`).
 
 1. Create a **private** repository from this one: use **Use this template → Create a new
    repository** and set it to *Private* (a fork of a public repository is always public, so don't fork).
@@ -34,22 +53,10 @@ the build needs your game's `default.xex`.
    git push
    ```
 4. Open **Actions → Build TrialsHD.exe** and wait for the run to finish (about 30–40 minutes).
-   Download the **TrialsHD-windows** artifact.
+   Download the **TrialsHD-windows** artifact, then follow steps 3–4 above.
 
 In this public repository the workflow has no game files and just reports that there is nothing
 to build.
-
-## Playing
-
-1. Unzip **TrialsHD-windows**.
-2. Copy `default.xex` and the `data` folder from your extracted game into `TrialsHD/assets`.
-3. Run `trialshd.exe`.
-
-Requirements: 64-bit Windows 10/11, a DirectX 12 graphics card, a CPU with SSE4.2 (2009 or later),
-and the Microsoft Visual C++ Redistributable (x64).
-
-In game: **F3** shows the FPS overlay, **F4** opens settings. Options live in `trialshd.toml`.
-If it crashes, `crash.txt` and the newest file in `logs` show what happened.
 
 ## What's in here
 
@@ -81,5 +88,6 @@ Things this game needed beyond ReXGlue's automatic analysis:
 
 - [ReXGlue SDK](https://github.com/rexglue/rexglue-sdk) (BSD-3-Clause), built on
   [Xenia](https://github.com/xenia-project/xenia) (BSD-3-Clause). See `NOTICE.md`.
-- Trials HD is © RedLynx / Microsoft. This project is not affiliated with or endorsed by them.
+- Trials HD is © RedLynx / Ubisoft, published on Xbox 360 by Microsoft. This project is not
+  affiliated with or endorsed by them.
 - The code in this repository is released under the MIT licence (`LICENSE`).
