@@ -19,9 +19,8 @@ ReXGlue's runtime (D3D12).
 ## Download and play
 
 1. Download **TrialsHD.rar** from the [latest release](../../releases/latest) and extract it.
-2. Get your game files: `default.xex` and the `data` folder from your copy of Trials HD. The XBLA
-   package is an Xbox 360 STFS (LIVE) file; extract it with
-   `python tools/stfs_extract.py <your Trials HD package file> extracted`.
+2. Get your game files (`default.xex` and the `data` folder) from your own copy of Trials HD.
+   See [Getting your game files](#getting-your-game-files) below.
 3. Copy `default.xex` and `data` into the `assets` folder next to `trialshd.exe`.
 4. Run `trialshd.exe`.
 
@@ -34,6 +33,47 @@ If it crashes, `crash.txt` and the newest file in `logs` show what happened; inc
 
 Saves and the shader cache are stored in your Windows user folder, not next to the exe.
 
+## Getting your game files
+
+This project doesn't include or link to the game. You need **your own copy of Trials HD**, the
+Xbox Live Arcade game bought on an Xbox 360 (title ID `5841095A`). The port always runs as the
+full game, so please only use it with a copy you've paid for, not the free trial.
+
+### 1. Copy the game package off your Xbox 360
+
+Xbox Live Arcade games are stored as one package file (an STFS "LIVE" file) on the console.
+
+1. On the Xbox 360, go to **Settings → System → Storage**, select a USB drive and choose
+   **Configure Now** to set it up as an Xbox storage device. Then copy **Trials HD** to it under
+   **Games and Apps**.
+2. Plug the USB drive into your PC. Windows can't read the Xbox format directly, so open it with an
+   Xbox 360 storage tool such as **Velocity** or **Horizon**.
+3. Browse to `Content/0000000000000000/5841095A/000D0000/` and copy out the file inside. It has a
+   long hexadecimal name and no extension; that's the game package.
+
+If your console has a hard drive that you can connect to the PC, the same tools can read it and the
+package is in the same folder.
+
+### 2. Extract the files
+
+You need [Python 3](https://www.python.org/downloads/) (no extra packages). Download this repository
+(**Code → Download ZIP**), open a terminal in its folder and run:
+
+```
+python tools/stfs_extract.py "<path to the package file>" extracted
+```
+
+This checks every block of the package and writes the contents to the `extracted` folder:
+
+```
+extracted/
+  default.xex      <- the game executable
+  data/            <- all the game data
+  ArcadeInfo.xml   (not needed)
+```
+
+Copy `default.xex` and `data` into the `assets` folder next to `trialshd.exe`.
+
 ## Building it yourself (no local tools needed)
 
 GitHub Actions can build the exe for you in a **private** copy of this repository (the build needs
@@ -41,11 +81,7 @@ your game's `default.xex`).
 
 1. Create a **private** repository from this one: use **Use this template → Create a new
    repository** and set it to *Private* (a fork of a public repository is always public, so don't fork).
-2. Get `default.xex` out of your Trials HD package. The package is an Xbox 360 STFS (LIVE) file;
-   extract it with:
-   ```
-   python tools/stfs_extract.py <your Trials HD package file> extracted
-   ```
+2. Get `default.xex` as described in [Getting your game files](#getting-your-game-files).
 3. In your private copy, add the executable and push:
    ```
    git add -f private/default.xex
