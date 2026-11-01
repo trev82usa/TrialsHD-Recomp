@@ -82,7 +82,7 @@ jobs:
         if: env.HAVE_XEX == '1'
         run: |
           mkdir -p package/TrialsHD/assets
-          cp rexglue/out/*.exe rexglue/out/*.dll rexglue/trialshd.toml package/TrialsHD/
+          cp rexglue/out/*.exe rexglue/out/*.dll rexglue/trialshd.toml rexglue/THIRD_PARTY_LICENSES.txt package/TrialsHD/
           cat > package/TrialsHD/README.txt <<'EOF'
           Trials HD - native Windows build (ReXGlue)
 
