@@ -287,10 +287,15 @@ async function route(req, env) {
   const path = url.pathname;
   const q = url.searchParams;
   const m = req.method;
-  const db = env.DB;
+  // Use the binding called DB, or else whatever D1 database is bound (any name).
+  const db =
+    env.DB ||
+    Object.values(env).find(
+      (v) => v && typeof v.prepare === "function" && typeof v.batch === "function",
+    );
 
-  if (m === "GET" && path === "/health") return json(200, { ok: true });
-  if (!db) throw new ApiError(500, "D1 database not bound as DB");
+  if (m === "GET" && path === "/health") return json(200, { ok: true, database: !!db });
+  if (!db) throw new ApiError(500, "no D1 database bound to this Worker");
   await ensureSchema(db);
 
   if (m === "GET" && path === "/api/v1/hello") {
