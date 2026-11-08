@@ -1,9 +1,9 @@
 # Trials HD Recomp
 
-A native Windows port of **Trials HD** (Xbox Live Arcade, 2009) made by static recompilation with
-[ReXGlue](https://github.com/rexglue/rexglue-sdk). The game's Xbox 360 PowerPC code is translated
-to C++ and compiled into a normal Windows executable, with Xbox 360 graphics and audio handled by
-ReXGlue's runtime (D3D12).
+A native **Windows and Linux** port of **Trials HD** (Xbox Live Arcade, 2009) made by static
+recompilation with [ReXGlue](https://github.com/rexglue/rexglue-sdk). The game's Xbox 360 PowerPC
+code is translated to C++ and compiled into a normal program, with Xbox 360 graphics and audio
+handled by ReXGlue's runtime (Direct3D 12 on Windows, Vulkan on Linux).
 
 > **No game data is included anywhere in this project.** You need your own legally obtained copy
 > of Trials HD. Please don't post game files, or links to them, in issues or pull requests.
@@ -12,9 +12,14 @@ ReXGlue's runtime (D3D12).
 
 ## Status
 
-- Boots, menus, full game (not the trial), tracks play with audio
-- Holds 60 FPS at any resolution on a mid-range PC (tested: Radeon RX 6750 XT)
+- Boots, menus, full game (not the trial), tracks play with audio, on Windows and Linux
+- Holds 60 FPS at any resolution on a mid-range PC (tested: Radeon RX 6750 XT, Windows 11 and
+  Ubuntu 26.04)
+- **Online leaderboards and friends on your own server** instead of Xbox Live (see
+  [Online leaderboards](#online-leaderboards))
 - Short hitch when a track loads; some engine threads use more CPU than they should
+- Linux: the first time each effect is used, it can look glitchy for a moment while its shader
+  compiles; it's cached after that
 
 ## Download and play
 
@@ -28,10 +33,28 @@ Requirements: 64-bit Windows 10/11, a DirectX 12 graphics card, a CPU with SSE4.
 and the [Microsoft Visual C++ Redistributable (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe)
 (install it if Windows says `MSVCP140.dll` or `VCRUNTIME140.dll` is missing).
 
-In game: **F3** shows the FPS overlay, **F4** opens settings. Options live in `trialshd.toml`.
+### Linux
+
+The Linux build is a `.tar.gz` (it keeps the program's executable flag):
+
+```
+tar xzf TrialsHD-linux.tar.gz
+cd TrialsHD
+# copy default.xex and the data folder into assets/
+./trialshd
+```
+
+Requirements: 64-bit Linux with glibc 2.38 or newer (Ubuntu 24.04+, Fedora 39+, Arch, ...) and a
+Vulkan driver (Mesa RADV for AMD, the NVIDIA driver, or Mesa ANV for Intel). The window uses X11,
+so on a Wayland desktop XWayland must be available (it is by default on Ubuntu, Fedora, KDE, ...).
+
+### In game
+
+**F3** shows the FPS overlay, **F4** opens settings. Options live in `trialshd.toml`; set your name
+there with `trialshd_player_name = "YourName"` (otherwise you are "User").
 If it crashes, `crash.txt` and the newest file in `logs` show what happened; include them in an issue.
 
-Saves and the shader cache are stored in your Windows user folder, not next to the exe.
+Saves and the shader cache are stored in your user folder, not next to the program.
 
 ## Getting your game files
 
@@ -81,6 +104,36 @@ extracted/
 
 Copy `default.xex` and `data` into the `assets` folder next to `trialshd.exe`.
 
+## Online leaderboards
+
+Xbox Live is gone, so the game's leaderboards, friends lists and "post your time" talk to a small
+server you run yourself instead (for example on a home server or NAS, optionally reachable from the
+internet through a Cloudflare Tunnel). The game uploads your time when you finish a track and the
+in-game leaderboards (global, friends, around you) show everyone on that server, ranked like Xbox
+Live: fewest faults, then fastest time.
+
+**Running the server:** see [`server/README.md`](server/README.md). It's a single Python file
+with no dependencies, plus Docker/Unraid and Cloudflare instructions.
+
+**Each player** adds these lines to `trialshd.toml` (next to the game):
+
+```toml
+trialshd_player_name = "YourName"                    # 1-15 letters, digits, spaces, _ or -
+trialshd_server_url = "https://trials.example.com"   # the server's address
+trialshd_player_key = "a-password-only-you-know"     # 8+ characters, pick your own
+```
+
+The first time a name connects, the server remembers its password; after that only that password
+can post times for that name. To make two players friends (so they appear on each other's
+"Friends" leaderboard), either player runs once:
+
+```
+curl -X POST -H "X-Player-Name: YourName" -H "X-Player-Key: your-password" \
+     -d '{"name":"FriendsName"}' https://trials.example.com/api/v1/friends
+```
+
+Leave `trialshd_server_url` empty to play offline.
+
 ## Building it yourself (no local tools needed)
 
 GitHub Actions can build the exe for you in a **private** copy of this repository (the build needs
@@ -95,8 +148,8 @@ your game's `default.xex`).
    git commit -m "Add my default.xex"
    git push
    ```
-4. Open **Actions → Build TrialsHD.exe** and wait for the run to finish (about 30–40 minutes).
-   Download the **TrialsHD-windows** artifact, then follow steps 3–4 above.
+4. Open **Actions → Build Trials HD** and wait for the run to finish (about 30–40 minutes).
+   Download the **TrialsHD-windows** or **TrialsHD-linux** artifact, then follow steps 3–4 above.
 
 In this public repository the workflow has no game files and just reports that there is nothing
 to build.
@@ -109,7 +162,9 @@ to build.
 | `rexglue/trialshd_config.toml` | Fixes for this game: function entries the analysis missed, setjmp/longjmp, codegen speed options |
 | `rexglue/trialshd.toml` | Runtime settings shipped next to the exe |
 | `rexglue/src/` | App code: game-file discovery, full-game licence, crash reports, FPS counter, sampling profiler, timer resolution |
-| `.github/workflows/build.yml` | Windows build: SDK download, `rexglue codegen`, compile, package |
+| `rexglue/src/online.cpp`, `http_client.*` | Online leaderboards: replaces the game's Xbox Live stats/friends calls with requests to your server |
+| `server/` | The leaderboard server (Python, SQLite), Dockerfile and setup guide |
+| `.github/workflows/build.yml` | Windows and Linux builds: SDK download, `rexglue codegen`, compile, package |
 | `tools/` | STFS extractor, XEX unpacker, and the scanners used to find function entries |
 
 ## Notes for developers
@@ -126,6 +181,12 @@ Things this game needed beyond ReXGlue's automatic analysis:
 - **Windows timer resolution:** without `timeBeginPeriod(1)` the game's short sleeps round up to
   15.6 ms and it runs at ~30 FPS.
 - **Host occlusion queries** stall the CPU on every query; they're disabled in `trialshd.toml`.
+- **Linux signals:** the runtime uses SIGSEGV for GPU memory write-watches during normal play, so
+  a crash handler must chain to it rather than replace it.
+- **Leaderboards:** the game's XDK wrappers for `XSessionWriteStats`, `XUserReadStats`,
+  `XUserCreateStatsEnumeratorByRank/ByXuid` and `XFriendsCreateEnumerator` are replaced in
+  `online.cpp`. Trials HD writes the time to property `0x10000002`, faults to `0x10000003` and ranks
+  by `0x20000006` = -(faults << 32 | time); leaderboard column 1 is the time, column 3 the faults.
 
 ## Credits and licence
 

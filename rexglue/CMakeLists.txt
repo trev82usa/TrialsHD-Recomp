@@ -15,6 +15,8 @@ set(TRIALSHD_SOURCES
     src/main.cpp
     src/crash_handler.cpp
     src/perf_tools.cpp
+    src/http_client.cpp
+    src/online.cpp
 )
 
 if(WIN32)

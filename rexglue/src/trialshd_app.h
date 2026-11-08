@@ -38,7 +38,7 @@ class TrialshdApp : public rex::ReXApp {
   // void OnPostLoadXexImage() override {}
   // Installed after setup so nothing in the runtime replaces it.
   void OnPostSetup() override {
-    InstallCrashHandler();
+    if (rex::cvar::Query<bool>("trialshd_crash_handler")) InstallCrashHandler();
     SetGuestFrameStats([] { return GetGuestFrameStats(); });
     StartProfilerIfEnabled();
   }

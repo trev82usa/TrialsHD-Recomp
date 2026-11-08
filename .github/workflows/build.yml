@@ -1,4 +1,4 @@
-name: Build TrialsHD.exe (Windows, ReXGlue)
+name: Build Trials HD (Windows + Linux, ReXGlue)
 
 on:
   push:
@@ -8,7 +8,7 @@ env:
   REXGLUE_VERSION: 0.9.0
 
 jobs:
-  build:
+  windows:
     runs-on: windows-latest
     timeout-minutes: 120
     defaults:
@@ -19,12 +19,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # The public repository has no game files, so it has nothing to build. In your private
-      # copy (see README) private/default.xex is present and the build runs.
+      # The public repository has no game files, so there is nothing to build. In a private
+      # copy with private/default.xex (see README) the build runs.
       - name: Check for the game executable
         run: |
           if [ ! -f private/default.xex ]; then
-            echo "::notice::private/default.xex not found - nothing to build. See README: build from a private copy with your own game files."
+            echo "::notice::private/default.xex not found - nothing to build. See README."
             echo "HAVE_XEX=0" >> "$GITHUB_ENV"
             exit 0
           fi
@@ -118,3 +118,106 @@ jobs:
           retention-days: 14
           path: rexglue/codegen.log
           if-no-files-found: ignore
+
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The public repository has no game files, so there is nothing to build. In a private
+      # copy with private/default.xex (see README) the build runs.
+      - name: Check for the game executable
+        run: |
+          if [ ! -f private/default.xex ]; then
+            echo "::notice::private/default.xex not found - nothing to build. See README."
+            echo "HAVE_XEX=0" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          echo "HAVE_XEX=1" >> "$GITHUB_ENV"
+          mkdir -p rexglue/assets
+          cp private/default.xex rexglue/assets/default.xex
+
+      - name: Install Clang 20 and Ninja
+        if: env.HAVE_XEX == '1'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build libx11-dev libx11-xcb-dev libxcb1-dev
+          wget -qO llvm.sh https://apt.llvm.org/llvm.sh
+          sudo bash llvm.sh 20
+          clang++-20 --version
+
+      - name: Download ReXGlue SDK
+        if: env.HAVE_XEX == '1'
+        run: |
+          curl -sSL -o sdk.zip "https://github.com/rexglue/rexglue-sdk/releases/download/v${REXGLUE_VERSION}/rexglue-sdk-${REXGLUE_VERSION}-linux-amd64.zip"
+          unzip -q sdk.zip -d "$RUNNER_TEMP/rexsdk"
+          ls "$RUNNER_TEMP/rexsdk"
+          echo "REXSDK=$RUNNER_TEMP/rexsdk/linux-amd64" >> "$GITHUB_ENV"
+
+      - name: Generate C++ from default.xex (rexglue codegen)
+        if: env.HAVE_XEX == '1'
+        working-directory: rexglue
+        run: |
+          chmod +x "$REXSDK/bin/rexglue"
+          "$REXSDK/bin/rexglue" codegen trialshd_manifest.toml 2>&1 | tee codegen.log
+          test "${PIPESTATUS[0]}" = 0
+
+      - name: Build
+        if: env.HAVE_XEX == '1'
+        working-directory: rexglue
+        run: |
+          cmake -S . -B out -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 \
+            -DCMAKE_CXX_FLAGS="-march=x86-64-v2 -gline-tables-only" \
+            -DCMAKE_PREFIX_PATH="$REXSDK"
+          cmake --build out
+
+      - name: Package
+        if: env.HAVE_XEX == '1'
+        run: |
+          P=package/TrialsHD
+          mkdir -p $P/assets
+          cp rexglue/out/trialshd $P/
+          objcopy --only-keep-debug $P/trialshd trialshd.debug
+          strip --strip-debug $P/trialshd
+          objcopy --add-gnu-debuglink=trialshd.debug $P/trialshd
+          cp "$REXSDK"/lib/librexruntime.so "$REXSDK"/lib/librexgpu-xenos.so "$REXSDK"/lib/libTracyClient.so $P/
+          cp rexglue/trialshd.toml rexglue/THIRD_PARTY_LICENSES.txt $P/
+          echo "Put default.xex and the data folder here." > $P/assets/PUT_GAME_FILES_HERE.txt
+          cat > $P/README.txt <<'TXT'
+          Trials HD - native Linux build (ReXGlue)
+
+          1. Copy your game files (default.xex and the data folder) into the "assets" folder.
+          2. Run ./trialshd from this folder (or double-click it in your file manager).
+
+          Requirements: 64-bit Linux with glibc 2.38 or newer (Ubuntu 24.04+, Fedora 39+,
+          Arch, ...) and a Vulkan driver (Mesa RADV for AMD, the NVIDIA driver, or Mesa ANV for Intel).
+
+          F3 = FPS overlay, F4 = settings. Settings are in trialshd.toml.
+          If anything goes wrong, keep crash.txt (if present) and the newest file in "logs".
+          TXT
+          sed -i 's/^          //' $P/README.txt
+          readelf -d $P/trialshd | grep -E "NEEDED|RUNPATH|RPATH"
+          tar -C package -czf TrialsHD-linux.tar.gz TrialsHD
+          ls -la $P TrialsHD-linux.tar.gz
+
+      # tar.gz keeps the executable bit, which plain artifact zips lose.
+      - name: Upload TrialsHD (Linux)
+        if: env.HAVE_XEX == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: TrialsHD-linux
+          retention-days: 14
+          path: TrialsHD-linux.tar.gz
+
+      - name: Upload Linux symbols
+        if: env.HAVE_XEX == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: symbols-linux
+          retention-days: 14
+          path: trialshd.debug

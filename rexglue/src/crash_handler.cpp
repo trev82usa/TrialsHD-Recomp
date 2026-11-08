@@ -4,6 +4,11 @@
 // Offsets can be resolved later against the symbols artifact from the same CI build.
 #include "crash_handler.h"
 
+#include <rex/cvar.h>
+
+REXCVAR_DEFINE_BOOL(trialshd_crash_handler, true, "TrialsHD",
+                    "Write crash.txt when the game crashes");
+
 #include <rex/logging/api.h>
 
 #include <cstdio>
@@ -108,11 +113,30 @@ void InstallCrashHandler() {
 #else
 
 #include <csignal>
+#include <cstring>
+#include <ctime>
 #include <execinfo.h>
+#include <ucontext.h>
 #include <unistd.h>
 
 namespace {
-void OnSignal(int sig) {
+
+// The runtime handles SIGSEGV/SIGILL itself as part of normal operation (guest memory write
+// watches for the GPU, MMIO). We must not replace that handler: we pass every fault to it first.
+// It returns whether or not it handled the fault, so a real crash shows up as the same
+// instruction faulting on the same address again straight away; only then do we report it.
+struct sigaction g_runtime_segv{}, g_runtime_ill{};
+thread_local uintptr_t t_last_pc = 0, t_last_addr = 0;
+thread_local int64_t t_last_ns = 0;
+thread_local int t_repeat = 0;
+
+int64_t NowNs() {
+  timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);  // async-signal-safe
+  return int64_t(ts.tv_sec) * 1000000000 + ts.tv_nsec;
+}
+
+void WriteCrashReport(int sig) {
   rex::FlushLogging();
   if (FILE* f = fopen("crash.txt", "w")) {
     fprintf(f, "Trials HD crashed with signal %d\n\nCall stack:\n", sig);
@@ -122,13 +146,55 @@ void OnSignal(int sig) {
     backtrace_symbols_fd(frames, n, fileno(f));
     fclose(f);
   }
+}
+
+[[noreturn]] void Die(int sig) {
+  WriteCrashReport(sig);
   signal(sig, SIG_DFL);
   raise(sig);
+  _exit(128 + sig);
 }
+
+void OnFault(int sig, siginfo_t* info, void* uctx) {
+  const struct sigaction& rt = sig == SIGSEGV ? g_runtime_segv : g_runtime_ill;
+  auto* uc = static_cast<ucontext_t*>(uctx);
+  uintptr_t pc = static_cast<uintptr_t>(uc->uc_mcontext.gregs[REG_RIP]);
+  uintptr_t addr = reinterpret_cast<uintptr_t>(info->si_addr);
+  // A write watch can legitimately fault on the same instruction and address again later (next
+  // frame); an unresolved fault repeats back to back. Count only rapid repeats.
+  int64_t now = NowNs();
+  if (pc == t_last_pc && addr == t_last_addr && now - t_last_ns < 2000000) {
+    if (++t_repeat >= 50) Die(sig);  // the runtime did not resolve it: a real crash
+  } else {
+    t_last_pc = pc;
+    t_last_addr = addr;
+    t_repeat = 0;
+  }
+  t_last_ns = now;
+  if ((rt.sa_flags & SA_SIGINFO) && rt.sa_sigaction) {
+    rt.sa_sigaction(sig, info, uctx);
+    return;
+  }
+  if (rt.sa_handler != SIG_DFL && rt.sa_handler != SIG_IGN && rt.sa_handler) {
+    rt.sa_handler(sig);
+    return;
+  }
+  Die(sig);  // nothing else handles it
+}
+
+void OnFatal(int sig) { Die(sig); }
+
 }  // namespace
 
+// Called after runtime setup, so the runtime's handlers are already in place and get saved here.
 void InstallCrashHandler() {
-  for (int sig : {SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT}) signal(sig, OnSignal);
+  struct sigaction sa{};
+  sa.sa_sigaction = OnFault;
+  sa.sa_flags = SA_SIGINFO | SA_NODEFER;
+  sigemptyset(&sa.sa_mask);
+  sigaction(SIGSEGV, &sa, &g_runtime_segv);
+  sigaction(SIGILL, &sa, &g_runtime_ill);
+  for (int sig : {SIGBUS, SIGFPE, SIGABRT}) signal(sig, OnFatal);
 }
 
 #endif

@@ -1,0 +1,20 @@
+# Trials HD leaderboard server + Cloudflare Tunnel.
+# 1. Put your tunnel token in a .env file next to this one:  TUNNEL_TOKEN=eyJ...
+# 2. docker compose up -d
+services:
+  trials-server:
+    build: .
+    image: trialshd-server:latest
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+    environment:
+      - TRIALS_ADMIN_KEY=${TRIALS_ADMIN_KEY:-}
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    depends_on:
+      - trials-server
