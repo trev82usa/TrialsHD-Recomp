@@ -13,6 +13,8 @@ place of Xbox Live leaderboards. Python standard library only, one SQLite file.
    - Add **Path**: container `/data` → host `/mnt/user/appdata/trialshd`
    - Add **Port**: container `8080` → host `8095` (any free port)
    - Add **Variable**: `TRIALS_ADMIN_KEY` = a long random string (optional, for admin endpoints)
+   - Optional **Variable**: `TRIALS_EVERYONE_FRIENDS` = `0` if you don't want every player on the
+     server to be everyone's friend (see Friends below)
 3. Start it and open `http://<unraid-ip>:8095/health`; it should say `{"ok": true}`.
 
 ## Put it on the internet with Cloudflare Tunnel
@@ -60,7 +62,10 @@ every view and property it receives, which is how this file gets filled in.
 
 ## Friends
 
-`POST /api/v1/friends {"name": "Bob"}` (with your player headers) makes you and Bob friends.
+By default **everyone who has played on your server is automatically everyone's friend**, so the
+in-game Friends leaderboard just works with nothing to set up. To use hand-picked friends instead,
+add the variable `TRIALS_EVERYONE_FRIENDS` = `0` to the container and add friends with
+`POST /api/v1/friends {"name": "Bob"}` (with your player headers).
 
 ## API summary
 

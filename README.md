@@ -125,13 +125,11 @@ trialshd_player_key = "a-password-only-you-know"     # 8+ characters, pick your 
 ```
 
 The first time a name connects, the server remembers its password; after that only that password
-can post times for that name. To make two players friends (so they appear on each other's
-"Friends" leaderboard), either player runs once:
+can post times for that name.
 
-```
-curl -X POST -H "X-Player-Name: YourName" -H "X-Player-Key: your-password" \
-     -d '{"name":"FriendsName"}' https://trials.example.com/api/v1/friends
-```
+Friends need no setup: everyone who has played on the same server shows up on each other's
+"Friends" leaderboard automatically. (A server owner who wants hand-picked friends instead can
+turn that off; see [server/README.md](server/README.md).)
 
 Leave `trialshd_server_url` empty to play offline.
 

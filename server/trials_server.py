@@ -9,6 +9,8 @@ Environment:
   TRIALS_PORT      port to listen on              (default 8080)
   TRIALS_CONFIG    path to views.json (optional)  (default /data/views.json)
   TRIALS_ADMIN_KEY if set, enables /api/v1/admin/* endpoints with header X-Admin-Key
+  TRIALS_EVERYONE_FRIENDS  1 (default) = every player on this server is everyone's friend;
+                   0 = only friends added with POST /api/v1/friends
 
 Players are registered on first use: the first request for a name stores a hash of the player's
 key; later requests for that name must send the same key (header X-Player-Key).
@@ -33,6 +35,8 @@ DB_PATH = os.environ.get("TRIALS_DB", "/data/trials.db")
 PORT = int(os.environ.get("TRIALS_PORT", "8080"))
 CONFIG_PATH = os.environ.get("TRIALS_CONFIG", "/data/views.json")
 ADMIN_KEY = os.environ.get("TRIALS_ADMIN_KEY", "")
+EVERYONE_FRIENDS = os.environ.get("TRIALS_EVERYONE_FRIENDS", "1").strip().lower() not in (
+    "0", "false", "no", "off")
 # Trials HD writes its ranking value as property 0x20000006 = -(faults << 32 | time in ms), so a
 # higher value is better (fewer faults, then faster).
 TRIALS_RATING = 0x20000006
@@ -223,7 +227,13 @@ class Store:
 
     # -- friends ---------------------------------------------------------------------------
     def friends(self, xuid: int) -> list:
-        rows = self.conn.execute("SELECT friend FROM friends WHERE xuid=?", (xuid,)).fetchall()
+        with _db_lock:
+            if EVERYONE_FRIENDS:
+                rows = self.conn.execute("SELECT xuid AS friend FROM players WHERE xuid<>? "
+                                         "ORDER BY name COLLATE NOCASE", (xuid,)).fetchall()
+            else:
+                rows = self.conn.execute("SELECT friend FROM friends WHERE xuid=?",
+                                         (xuid,)).fetchall()
         ids = [r["friend"] for r in rows]
         names = self.names(ids)
         return [{"xuid": f"{i:016X}", "name": names.get(i, "?")} for i in ids]
