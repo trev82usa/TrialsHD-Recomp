@@ -19,14 +19,15 @@ license_mask = 4294967295
 trialshd_profile = false
 
 # --- Online leaderboards and your name ---------------------------------------------------------
-# Fill in the quotes. Leave trialshd_server_url empty ("") to play offline.
+# To go online, put your name and a password in the quotes below; that's all. The server is the
+# free community server (trials.bytrev.org). Leave trialshd_server_url empty ("") to stay offline.
 
 # Your name in the game and on the leaderboards: 1-15 letters, digits, spaces, _ or -.
 # Empty = "User".
 trialshd_player_name = ""
 
-# Leaderboard server address.
-trialshd_server_url = ""
+# Leaderboard server address: the community server. Change it only to use a different server.
+trialshd_server_url = "https://trials.bytrev.org"
 
 # Your own password for the server, 8 or more characters. Make one up; the first time you connect
 # it is saved for your name, and after that only this password can post times as you.

@@ -108,31 +108,30 @@ Copy `default.xex` and `data` into the `assets` folder next to `trialshd.exe`.
 ## Online leaderboards
 
 Xbox Live is gone, so the game's leaderboards, friends lists and "post your time" talk to a small
-server you run yourself instead: free on Cloudflare Workers (nothing to host), or on a home
-server/NAS with Docker. The game uploads your time when you finish a track and the
-in-game leaderboards (global, friends, around you) show everyone on that server, ranked like Xbox
-Live: fewest faults, then fastest time.
+community server instead: **`trials.bytrev.org`**. The game uploads your time when you finish a
+track, and the in-game leaderboards (global, friends, around you) show everyone on that server,
+ranked like Xbox Live: fewest faults, then fastest time.
 
-**Running the server:** the easiest way is the free Cloudflare Workers version, set up entirely
-in the Cloudflare dashboard: see [`server/worker/README.md`](server/worker/README.md). To host it
-yourself instead, see [`server/README.md`](server/README.md) (a single Python file, Docker/Unraid).
-
-**Each player** adds these lines to `trialshd.toml` (next to the game):
+**To go online**, open `trialshd.toml` (next to the game) and fill in your name and a password.
+The server address is already filled in:
 
 ```toml
 trialshd_player_name = "YourName"                    # 1-15 letters, digits, spaces, _ or -
-trialshd_server_url = "https://trials.example.com"   # the server's address
-trialshd_player_key = "a-password-only-you-know"     # 8+ characters, pick your own
+trialshd_server_url = "https://trials.bytrev.org"    # already set: the community server
+trialshd_player_key = "make-up-a-password"           # 8+ characters, pick your own
 ```
 
-The first time a name connects, the server remembers its password; after that only that password
-can post times for that name.
+- The first time your name connects, the server remembers your password; after that only that
+  password can post times as you. Pick a password you don't use anywhere else.
+- Names are first come, first served.
+- Friends need no setup: everyone on the server shows up on your "Friends" leaderboard.
+- With the name or password left empty, the game stays offline.
 
-Friends need no setup: everyone who has played on the same server shows up on each other's
-"Friends" leaderboard automatically. (A server owner who wants hand-picked friends instead can
-turn that off; see [server/README.md](server/README.md).)
-
-Leave `trialshd_server_url` empty to play offline.
+**Running your own server instead** (for a private group): the easiest way is the free Cloudflare
+Workers version, set up entirely in the Cloudflare dashboard: see
+[`server/worker/README.md`](server/worker/README.md). To host it at home instead, see
+[`server/README.md`](server/README.md) (a single Python file, Docker/Unraid). Then put your
+server's address in `trialshd_server_url`.
 
 ## Building it yourself (no local tools needed)
 
