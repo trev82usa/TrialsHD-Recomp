@@ -3,6 +3,9 @@
 A tiny web service that stores the times the recompiled game uploads and serves them back in
 place of Xbox Live leaderboards. Python standard library only, one SQLite file.
 
+**Easiest: run it free on Cloudflare Workers instead**. Nothing to host at home; see
+[worker/README.md](worker/README.md). The rest of this page is the self-hosted (Docker) version.
+
 ## Run it on Unraid (no image build needed)
 
 1. Copy `trials_server.py` to `/mnt/user/appdata/trialshd/` (e.g. through the `appdata` share).

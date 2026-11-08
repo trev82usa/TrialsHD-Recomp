@@ -1,0 +1,12 @@
+name = "trialshd"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "trialshd"
+database_id = "PUT-YOUR-DATABASE-ID-HERE"  # from: npx wrangler d1 create trialshd
+
+[vars]
+EVERYONE_FRIENDS = "1"
+# ADMIN_KEY: set as a secret with  npx wrangler secret put ADMIN_KEY

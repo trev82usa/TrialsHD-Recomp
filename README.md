@@ -108,13 +108,14 @@ Copy `default.xex` and `data` into the `assets` folder next to `trialshd.exe`.
 ## Online leaderboards
 
 Xbox Live is gone, so the game's leaderboards, friends lists and "post your time" talk to a small
-server you run yourself instead (for example on a home server or NAS, optionally reachable from the
-internet through a Cloudflare Tunnel). The game uploads your time when you finish a track and the
+server you run yourself instead: free on Cloudflare Workers (nothing to host), or on a home
+server/NAS with Docker. The game uploads your time when you finish a track and the
 in-game leaderboards (global, friends, around you) show everyone on that server, ranked like Xbox
 Live: fewest faults, then fastest time.
 
-**Running the server:** see [`server/README.md`](server/README.md). It's a single Python file
-with no dependencies, plus Docker/Unraid and Cloudflare instructions.
+**Running the server:** the easiest way is the free Cloudflare Workers version, set up entirely
+in the Cloudflare dashboard: see [`server/worker/README.md`](server/worker/README.md). To host it
+yourself instead, see [`server/README.md`](server/README.md) (a single Python file, Docker/Unraid).
 
 **Each player** adds these lines to `trialshd.toml` (next to the game):
 
