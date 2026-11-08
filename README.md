@@ -6,7 +6,7 @@ code is translated to C++ and compiled into a normal program, with Xbox 360 grap
 handled by ReXGlue's runtime (Direct3D 12 on Windows, Vulkan on Linux).
 
 > **No game data is included anywhere in this project.** You need your own legally obtained copy
-> of Trials HD. Please don't post game files, or links to them, in issues or pull requests.
+> of Trials HD.
 >
 > Not affiliated with or endorsed by Ubisoft, RedLynx or Microsoft.
 
