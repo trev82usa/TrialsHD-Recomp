@@ -16,32 +16,39 @@ Everything below is done in the Cloudflare dashboard; no tools to install.
    `trialshd` → **Deploy**.
 2. **Edit code**, delete everything in `worker.js`, paste in the contents of [worker.js](worker.js),
    then **Deploy**.
-3. In the Worker: **Bindings → Add binding → D1 database**. Variable name `DB`, database
-   `trialshd` → Add. (The page may redeploy; that's fine.)
+3. In the Worker: **Settings → Bindings → + Add binding → D1 database → Add Binding**, pick the
+   `trialshd` database and save. The variable name doesn't matter (`DB`, `MY_DB`, ...); the Worker
+   uses whichever D1 database is bound. Add it once and leave it; deleting and re-adding bindings
+   can leave a stale one in the "Previews" settings.
 4. Optional, under **Settings → Variables and Secrets**:
    - `ADMIN_KEY` (type **Secret**): a long random password for the admin endpoints.
    - `EVERYONE_FRIENDS` = `0` if you want hand-picked friends instead of everyone being friends.
    - `VIEWS_JSON`: ranking overrides, same format as `views.example.json`. Not needed for Trials HD.
-5. Open `https://trialshd.<your-account>.workers.dev/health`. It should say `{"ok":true}`.
+5. Open `https://trialshd.<your-account>.workers.dev/health`. It should say
+   `{"ok":true,"database":true}` (`"database":false` means the binding is missing).
    Tables are created automatically on first use.
 
 ## 3. Use your own address (optional)
 
-**Worker → Settings → Domains & Routes → Add → Custom domain** → e.g. `trials.example.com`.
-The domain must be on your Cloudflare account. If that name already points somewhere else (for
-example a Cloudflare Tunnel), remove the old public hostname and its DNS record first.
+Worker → **Domains** tab (top of the Worker page) → **Add → Custom domain** → pick your domain and
+type the subdomain (e.g. `trials`; it's pre-filled with the Worker's name, so change it). The
+domain must be on your Cloudflare account. If that name is already used by a Cloudflare Tunnel,
+first delete it from the tunnel: **Networking → Tunnels →** your tunnel **→ Routes** (deleting the
+route there also removes its DNS record).
 
 ## 4. Bring over times from the Docker server (optional)
 
 Players keep their names, passwords and best times.
 
 1. Copy `export_for_d1.py` next to `trials.db` (on Unraid: into `/mnt/user/appdata/trialshd/`).
-2. Run it. On Unraid, click the `trialshd-server` container → **Console**, then:
+2. Run it with the container's Python (Unraid itself has none). From the Unraid terminal:
    ```
-   python3 /data/export_for_d1.py /data/trials.db > /data/import.sql
+   docker exec trialshd-server python3 /data/export_for_d1.py /data/trials.db > /mnt/user/appdata/trialshd/import.sql
    ```
+   or, on any PC with Python where the share is mounted: `python3 export_for_d1.py trials.db > import.sql`.
+   It prints how many players and times it exported.
 3. Open `import.sql` in a text editor and copy everything.
-4. **D1 → trialshd → Console**, paste, **Execute**.
+4. **D1 → trialshd → Console**, paste, **Execute**. Check with `SELECT COUNT(*) FROM entries;`.
 
 ## Game settings
 
