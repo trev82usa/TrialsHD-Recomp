@@ -23,7 +23,8 @@ handled by ReXGlue's runtime (Direct3D 12 on Windows, Vulkan on Linux).
 
 ## Download and play
 
-1. Download **TrialsHD.rar** from the [latest release](../../releases/latest) and extract it.
+1. Download the [latest release](../../releases/latest): **TrialsHD-windows-….zip** for Windows or
+   **TrialsHD-linux-….tar.gz** for Linux, and extract it.
 2. Get your game files (`default.xex` and the `data` folder) from your own copy of Trials HD.
    See [Getting your game files](#getting-your-game-files) below.
 3. Copy `default.xex` and `data` into the `assets` folder next to `trialshd.exe`.
