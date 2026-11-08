@@ -18,14 +18,20 @@ license_mask = 4294967295
 # CPU time goes. Costs a little speed; set to false once it is no longer needed.
 trialshd_profile = false
 
-# --- Online leaderboards (your own server) -------------------------------------------------
-# Your name in the game and on the leaderboards (1-15 letters, digits, spaces, _ or -).
-# trialshd_player_name = "Trev"
-# Leaderboard server address. Leave empty to play offline.
-# trialshd_server_url = "https://trials.example.com"
-# Your password for the server (8+ characters). The first time you connect it is saved for your
-# name; after that nobody else can post times as you.
-# trialshd_player_key = "change-me-please"
-# Cloudflare Access service token (only if the server is protected with Cloudflare Access).
-# trialshd_cf_client_id = ""
-# trialshd_cf_client_secret = ""
+# --- Online leaderboards and your name ---------------------------------------------------------
+# Fill in the quotes. Leave trialshd_server_url empty ("") to play offline.
+
+# Your name in the game and on the leaderboards: 1-15 letters, digits, spaces, _ or -.
+# Empty = "User".
+trialshd_player_name = ""
+
+# Leaderboard server address.
+trialshd_server_url = ""
+
+# Your own password for the server, 8 or more characters. Make one up; the first time you connect
+# it is saved for your name, and after that only this password can post times as you.
+trialshd_player_key = ""
+
+# Only needed if the server is protected with Cloudflare Access (ask whoever runs the server).
+trialshd_cf_client_id = ""
+trialshd_cf_client_secret = ""
