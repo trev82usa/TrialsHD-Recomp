@@ -10,7 +10,11 @@
 #include "perf_tools.h"
 #include <rex/rex_app.h>
 
+#include <chrono>
 #include <cstdlib>
+#include <mutex>
+#include <thread>
+#include <rex/logging/api.h>
 #include <filesystem>
 
 class TrialshdApp : public rex::ReXApp {
@@ -46,7 +50,25 @@ class TrialshdApp : public rex::ReXApp {
   // std::unique_ptr<rex::ui::ImGuiDialog> CreateAchievementsOverlay() override;
   // std::unique_ptr<rex::ui::AchievementNotificationDialog>
   // CreateAchievementNotificationDialog() override;
-  // void OnShutdown() override {}
+  // Closing the window runs the engine's full teardown, which can hang on a game thread that
+  // never stops (the process then lingers invisibly). Give it a few seconds, then save the log
+  // and end the process; scores are already uploaded by then.
+  bool OnWindowCloseRequested() override {
+    StartExitWatchdog();
+    return true;
+  }
+  void OnShutdown() override { StartExitWatchdog(); }
+
+  static void StartExitWatchdog() {
+    static std::once_flag once;
+    std::call_once(once, [] {
+      std::thread([] {
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        rex::FlushLogging();
+        std::_Exit(0);
+      }).detach();
+    });
+  }
 
   // Find the game files without a command-line argument: an "assets" folder next to the
   // exe, or default.xex placed right next to the exe.
