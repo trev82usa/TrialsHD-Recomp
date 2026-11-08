@@ -172,7 +172,15 @@ async function submit(db, env, xuid, views) {
     if (!(String(view) in config))
       console.log(`view ${view}: rating ${rating} (${desc ? "desc" : "asc"}), ${props.size} props`);
   }
-  if (writes.length) await db.batch(writes);
+  if (writes.length) {
+    // Keep only the newest 2000 raw submissions (a debugging log) so the database stays small.
+    writes.push(
+      db.prepare(
+        "DELETE FROM submissions WHERE id <= (SELECT MAX(id) - 2000 FROM submissions)",
+      ),
+    );
+    await db.batch(writes);
+  }
   return written;
 }
 
