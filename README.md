@@ -51,8 +51,25 @@ so on a Wayland desktop XWayland must be available (it is by default on Ubuntu, 
 
 ### In game
 
-**F3** shows the FPS overlay, **F4** opens settings. Options live in `trialshd.toml`; set your name
-there with `trialshd_player_name = "YourName"` (otherwise you are "User").
+**F1** (or **LB + RB + X** on a controller, **Q + E + X** on the keyboard) opens the Trials HD
+settings menu: your name and password, online leaderboards (with a connection test), resolution
+scale, fullscreen, texture filtering, sound, and a list of the controls. Press **Save** to keep
+changes; they're written to `trialshd.toml`. **F3** shows the FPS overlay, **F4** has every
+advanced engine setting.
+
+**Controller or keyboard.** Any Xbox/PlayStation controller works. On a keyboard:
+
+| Key | Does |
+|---|---|
+| ↑ / W | Accelerate (and up in menus) |
+| ↓ / S | Brake (and down in menus) |
+| ← → / A D | Lean back / forward |
+| Enter / Space | Select (A) |
+| Backspace | Back (B) |
+| Escape / P | Pause (Start) |
+| Tab / R | Restart (Back) |
+| Q / E | LB / RB |
+
 If it crashes, `crash.txt` and the newest file in `logs` show what happened; include them in an issue.
 
 Saves and the shader cache are stored in your user folder, not next to the program.

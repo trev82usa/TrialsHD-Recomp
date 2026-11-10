@@ -8,7 +8,12 @@
 #include <rex/filesystem.h>
 #include "crash_handler.h"
 #include "perf_tools.h"
+#include "trials_menu.h"
+#include "keyboard_input.h"
 #include <rex/rex_app.h>
+#include <rex/ui/keybinds.h>
+#include <rex/input/input_system.h>
+#include <rex/runtime.h>
 
 #include <chrono>
 #include <cstdlib>
@@ -45,8 +50,24 @@ class TrialshdApp : public rex::ReXApp {
     if (rex::cvar::Query<bool>("trialshd_crash_handler")) InstallCrashHandler();
     SetGuestFrameStats([] { return GetGuestFrameStats(); });
     StartProfilerIfEnabled();
+    // After the SDK set its own input rule (in ConstructRuntime), so ours replaces it.
+    if (runtime() && runtime()->input_system()) {
+      auto* input = static_cast<rex::input::InputSystem*>(runtime()->input_system());
+      auto keyboard = CreateKeyboardDriver(window());
+      auto* keyboard_ptr = keyboard.get();
+      input->AddDriver(std::move(keyboard));  // before the callback is set
+      MoveKeyboardDriverFirst(input, keyboard_ptr);
+      ConnectTrialsMenuInput(input);
+    }
   }
-  // void OnCreateDialogs(rex::ui::ImGuiDrawer* drawer) override {}
+  // F1: the Trials HD settings menu (name, password, online, graphics, sound).
+  // Controller: LB+RB+X.
+  void OnCreateDialogs(rex::ui::ImGuiDrawer* drawer) override {
+    InitTrialsMenu(drawer, window(),
+                   rex::filesystem::GetExecutableFolder() / "trialshd.toml");
+    rex::ui::RegisterBind("bind_trials_menu", "F1", "Toggle the Trials HD settings menu",
+                          [] { ToggleTrialsMenu(); });
+  }
   // std::unique_ptr<rex::ui::ImGuiDialog> CreateAchievementsOverlay() override;
   // std::unique_ptr<rex::ui::AchievementNotificationDialog>
   // CreateAchievementNotificationDialog() override;

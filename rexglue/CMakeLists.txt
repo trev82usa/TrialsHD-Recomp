@@ -17,6 +17,8 @@ set(TRIALSHD_SOURCES
     src/perf_tools.cpp
     src/http_client.cpp
     src/online.cpp
+    src/trials_menu.cpp
+    src/keyboard_input.cpp
 )
 
 if(WIN32)
