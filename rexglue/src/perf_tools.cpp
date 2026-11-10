@@ -25,6 +25,11 @@
 #include <unordered_map>
 #include <vector>
 
+REXCVAR_DEFINE_INT32(trialshd_fps_cap, 0, "TrialsHD",
+                     "Frame limiter: 0 = off (vsync paces the game), 60 = hold an even 60 fps. "
+                     "Can smooth stutter on high-refresh screens / some NVIDIA setups")
+    .range(0, 240);
+
 REXCVAR_DEFINE_BOOL(trialshd_profile, false, "TrialsHD",
                     "Write a CPU sampling profile to profile.txt next to the exe");
 
@@ -82,10 +87,41 @@ void OnGuestFrame() {
   }
 }
 
+// Frame limiter: waits until the next frame slot before the game presents, so frames leave at
+// an even interval. Sleeps most of the wait and spins the last ~1.5 ms for accuracy (the timer
+// resolution is already raised on Windows). If the game falls behind by more than a frame, the
+// schedule restarts instead of trying to catch up.
+void FrameCap() {
+  static int cached_cap = 0;
+  static int counter = 0;
+  if ((counter++ & 31) == 0) cached_cap = rex::cvar::Query<int32_t>("trialshd_fps_cap");
+  const int cap = cached_cap;
+  using clock = std::chrono::steady_clock;
+  static clock::time_point next{};
+  if (cap <= 0) {
+    next = {};
+    return;
+  }
+  const auto interval = std::chrono::duration_cast<clock::duration>(
+      std::chrono::duration<double>(1.0 / cap));
+  auto now = clock::now();
+  if (next.time_since_epoch().count() == 0 || now > next + interval) {
+    next = now + interval;  // (re)start the schedule
+    return;
+  }
+  if (now < next) {
+    const auto spin = std::chrono::microseconds(1500);
+    if (next - now > spin) std::this_thread::sleep_until(next - spin);
+    while (clock::now() < next) std::this_thread::yield();
+  }
+  next += interval;
+}
+
 }  // namespace
 
 REX_EXTERN(__imp__sub_82143E10);
 REX_HOOK_RAW(sub_82143E10) {
+  FrameCap();
   OnGuestFrame();
   __imp__sub_82143E10(ctx, base);
 }

@@ -327,6 +327,7 @@ class TrialsMenu final : public rex::ui::ImGuiDialog {
     mute_ = GetBool("audio_mute", false);
     menu_size_ = std::clamp(GetInt("trialshd_menu_size", 0), 0, 4);
     keyboard_ = GetBool("trialshd_keyboard", true);
+    fps_cap_ = GetInt("trialshd_fps_cap", 0) > 0;
   }
 
   void Help(const char* text) {
@@ -420,6 +421,12 @@ class TrialsMenu final : public rex::ui::ImGuiDialog {
       ImGui::Checkbox("Vsync", &vsync_);
       Help("Keeps the game in step with your screen. Leave on unless you know you want it off.");
       RestartNote("vsync");
+    }
+    if (Has("trialshd_fps_cap")) {
+      ImGui::Checkbox("Frame limiter (even 60 fps)", &fps_cap_);
+      Help("Holds frames at an exact 60 per second. Try this if the game stutters on a "
+           "120/144/165 Hz screen or with an NVIDIA card. Leave off if it's already smooth. "
+           "Applies straight away when you press Save.");
     }
     if (Has("present_letterbox")) {
       ImGui::Checkbox("Black bars on wide screens", &letterbox_);
@@ -585,6 +592,7 @@ class TrialsMenu final : public rex::ui::ImGuiDialog {
     set_bool("fullscreen", fullscreen_);
     set_int("trialshd_menu_size", menu_size_);
     set_bool("trialshd_keyboard", keyboard_);
+    set_int("trialshd_fps_cap", fps_cap_ ? 60 : 0);
     if (window_ && window_->IsFullscreen() != fullscreen_) window_->SetFullscreen(fullscreen_);
 
     std::string error;
@@ -618,6 +626,7 @@ class TrialsMenu final : public rex::ui::ImGuiDialog {
   int menu_size_ = 0;
   int tab_ = 0;
   bool keyboard_ = true;
+  bool fps_cap_ = false;
   float scale_ = 1.0f;
   std::string status_;
   bool status_ok_ = true;

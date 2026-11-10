@@ -14,6 +14,10 @@ log_level = "warn"
 # Full game rather than the Xbox Live Arcade trial (also set in code).
 license_mask = 4294967295
 
+# Frame limiter: 0 = off (normal), 60 = hold an exact 60 fps. Try 60 if the game stutters on a
+# high-refresh screen or with an NVIDIA card. Also in the F1 menu (Graphics & Sound).
+trialshd_fps_cap = 0
+
 # Performance diagnostics: writes profile.txt next to the exe every 10 seconds showing where the
 # CPU time goes. Costs a little speed; set to false once it is no longer needed.
 trialshd_profile = false
