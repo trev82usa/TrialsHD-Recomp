@@ -10,6 +10,8 @@
 #include "perf_tools.h"
 #include "trials_menu.h"
 #include "keyboard_input.h"
+
+void StartTitleExitWatch();  // game_exit.cpp
 #include <rex/rex_app.h>
 #include <rex/ui/keybinds.h>
 #include <rex/input/input_system.h>
@@ -50,6 +52,7 @@ class TrialshdApp : public rex::ReXApp {
     if (rex::cvar::Query<bool>("trialshd_crash_handler")) InstallCrashHandler();
     SetGuestFrameStats([] { return GetGuestFrameStats(); });
     StartProfilerIfEnabled();
+    StartTitleExitWatch();
     // After the SDK set its own input rule (in ConstructRuntime), so ours replaces it.
     if (runtime() && runtime()->input_system()) {
       auto* input = static_cast<rex::input::InputSystem*>(runtime()->input_system());
