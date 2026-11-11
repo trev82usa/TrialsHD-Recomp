@@ -17,6 +17,11 @@ license_mask = 4294967295
 # Frame limiter: 0 = off (normal), 60 = hold an exact 60 fps. Try 60 if the game stutters on a
 # high-refresh screen or with an NVIDIA card. Also in the F1 menu (Graphics & Sound).
 trialshd_fps_cap = 0
+# Picture effects (also in the F1 menu; apply after a restart). 1.0 = original game.
+# Brightness 0.5-1.5, bloom (glow around lights) 0-2, depth-of-field blur 0-1 (0 = off).
+trialshd_brightness = 1.0
+trialshd_bloom = 1.0
+trialshd_dof = 1.0
 
 # Performance diagnostics: writes profile.txt next to the exe every 10 seconds showing where the
 # CPU time goes. Costs a little speed; set to false once it is no longer needed.

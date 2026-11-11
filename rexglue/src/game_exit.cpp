@@ -12,6 +12,8 @@
 #include <atomic>
 #include <chrono>
 #include <cstdlib>
+#include <filesystem>
+#include <string>
 #include <thread>
 
 namespace {
@@ -42,4 +44,26 @@ void StartTitleExitWatch() {
       }
     }
   }).detach();
+}
+
+// Linux: the engine keeps the game's 4.5 GB memory in a shared-memory file (/dev/shm/
+// xenia_memory_<n>, held in RAM) and only deletes it on a perfectly clean shutdown. Every crash
+// or quick exit leaves one behind still holding RAM; after a few dozen runs the machine slows to
+// a crawl and the game dies with SIGBUS. Removing the name is always safe: a running game keeps
+// its memory through its open handle, and the RAM is freed as soon as that process ends.
+// Call before the runtime starts (old leftovers) and right after (our own file).
+void RemoveSharedMemoryFiles(const char* when) {
+#if defined(__linux__)
+  std::error_code ec;
+  int removed = 0;
+  for (const auto& e : std::filesystem::directory_iterator("/dev/shm", ec)) {
+    const std::string name = e.path().filename().string();
+    if (name.rfind("xenia_memory_", 0) != 0) continue;
+    std::error_code rm_ec;
+    if (std::filesystem::remove(e.path(), rm_ec)) ++removed;
+  }
+  if (removed) REXLOG_INFO("[memory] removed {} shared-memory file(s) {}", removed, when);
+#else
+  (void)when;
+#endif
 }

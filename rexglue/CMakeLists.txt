@@ -20,6 +20,7 @@ set(TRIALSHD_SOURCES
     src/trials_menu.cpp
     src/keyboard_input.cpp
     src/game_exit.cpp
+    src/post_effects.cpp
 )
 
 if(WIN32)

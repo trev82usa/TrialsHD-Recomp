@@ -48,6 +48,18 @@ bool GetBool(const char* name, bool def) {
 int GetInt(const char* name, int def) {
   return Has(name) ? rex::cvar::Query<int32_t>(name) : def;
 }
+double GetDouble(const char* name, double def) {
+  return Has(name) ? rex::cvar::Query<double>(name) : def;
+}
+// Bloom/DoF as they were when the game started (what the shaders were built with), in percent.
+int BootPct(const char* name) {
+  static const int bloom = int(GetDouble("trialshd_bloom", 1.0) * 100 + 0.5);
+  static const int dof = int(GetDouble("trialshd_dof", 1.0) * 100 + 0.5);
+  static const int bright = int(GetDouble("trialshd_brightness", 1.0) * 100 + 0.5);
+  if (std::strcmp(name, "trialshd_bloom") == 0) return bloom;
+  if (std::strcmp(name, "trialshd_brightness") == 0) return bright;
+  return dof;
+}
 bool NeedsRestart(const char* name) {
   auto* info = rex::cvar::GetFlagInfo(name);
   return info && info->lifecycle != rex::cvar::Lifecycle::kHotReload;
@@ -328,6 +340,10 @@ class TrialsMenu final : public rex::ui::ImGuiDialog {
     menu_size_ = std::clamp(GetInt("trialshd_menu_size", 0), 0, 4);
     keyboard_ = GetBool("trialshd_keyboard", true);
     fps_cap_ = GetInt("trialshd_fps_cap", 0) > 0;
+    BootPct("trialshd_bloom");
+    bloom_pct_ = std::clamp(int(GetDouble("trialshd_bloom", 1.0) * 100 + 0.5), 0, 200);
+    dof_pct_ = std::clamp(int(GetDouble("trialshd_dof", 1.0) * 100 + 0.5), 0, 100);
+    bright_pct_ = std::clamp(int(GetDouble("trialshd_brightness", 1.0) * 100 + 0.5), 50, 150);
   }
 
   void Help(const char* text) {
@@ -338,6 +354,21 @@ class TrialsMenu final : public rex::ui::ImGuiDialog {
       ImGui::TextUnformatted(text);
       ImGui::PopTextWrapPos();
       ImGui::EndTooltip();
+    }
+  }
+
+  // A 5%-step slider that also works with a controller / arrow keys (one press = one step).
+  void PctSlider(const char* flag, const char* label, int* pct, int lo, int hi, const char* help) {
+    if (!Has(flag)) return;
+    int step = std::clamp((*pct - lo + 2) / 5, 0, (hi - lo) / 5);
+    char shown[16];
+    std::snprintf(shown, sizeof(shown), "%d%%%%", lo + step * 5);
+    ImGui::SetNextItemWidth(S(220));
+    if (ImGui::SliderInt(label, &step, 0, (hi - lo) / 5, shown)) *pct = lo + step * 5;
+    Help((std::string(help) + " Applies after a restart.").c_str());
+    if (*pct != BootPct(flag)) {
+      ImGui::SameLine();
+      ImGui::TextColored(ImVec4(1, 0.8f, 0.3f, 1), "(after restart)");
     }
   }
 
@@ -443,6 +474,19 @@ class TrialsMenu final : public rex::ui::ImGuiDialog {
       Help("Anisotropic filtering: keeps the track sharp at a distance. 16x looks best and costs "
            "little on most graphics cards.");
       RestartNote("anisotropic_override");
+    }
+
+    if (Has("trialshd_bloom") || Has("trialshd_brightness")) {
+      ImGui::SeparatorText("Effects (after restart)");
+      PctSlider("trialshd_brightness", "Brightness", &bright_pct_, 50, 150,
+                "How bright the picture is while riding. 100% is the original game; turn it down "
+                "if bright scenes look washed out.");
+      PctSlider("trialshd_bloom", "Bloom (glow)", &bloom_pct_, 0, 200,
+                "The glow around bright lights and windows. 100% is the original game, 0% turns "
+                "it off.");
+      PctSlider("trialshd_dof", "Depth of field (blur)", &dof_pct_, 0, 100,
+                "How blurry things near the camera and far in the background get. 100% is the "
+                "original game, 0% keeps everything sharp.");
     }
 
     if (Has("audio_mute")) {
@@ -555,24 +599,25 @@ class TrialsMenu final : public rex::ui::ImGuiDialog {
   void Save() {
     std::string name = name_, key = key_, server = server_;
     while (!server.empty() && server.back() == '/') server.pop_back();
-    if (!name.empty() && !ValidName(name)) {
-      SetStatus(false, "Fix the name first");
-      return;
-    }
-    if (online_ && (name.empty() || key.size() < 8)) {
-      SetStatus(false, "Online needs a name and an 8+ character password");
-      return;
-    }
-    std::string url = online_ ? server : std::string();
+    // Graphics/sound always save; the player/online part only when it's valid.
+    std::string online_problem;
+    if (!name.empty() && !ValidName(name))
+      online_problem = "name not saved - use 1-15 letters, digits, spaces, _ or -";
+    else if (online_ && (name.empty() || key.size() < 8))
+      online_problem = "online not saved - needs a name and an 8+ character password";
 
-    std::vector<std::pair<std::string, std::string>> toml = {
-        {"trialshd_player_name", TomlQuote(name)},
-        {"trialshd_player_key", TomlQuote(key)},
-        {"trialshd_server_url", TomlQuote(url)},
-    };
-    rex::cvar::SetFlagByName("trialshd_player_name", name);
-    rex::cvar::SetFlagByName("trialshd_player_key", key);
-    rex::cvar::SetFlagByName("trialshd_server_url", url);
+    std::vector<std::pair<std::string, std::string>> toml;
+    if (online_problem.empty()) {
+      std::string url = online_ ? server : std::string();
+      toml = {
+          {"trialshd_player_name", TomlQuote(name)},
+          {"trialshd_player_key", TomlQuote(key)},
+          {"trialshd_server_url", TomlQuote(url)},
+      };
+      rex::cvar::SetFlagByName("trialshd_player_name", name);
+      rex::cvar::SetFlagByName("trialshd_player_key", key);
+      rex::cvar::SetFlagByName("trialshd_server_url", url);
+    }
 
     auto set_bool = [&](const char* flag, bool v) {
       if (!Has(flag)) return;
@@ -593,6 +638,16 @@ class TrialsMenu final : public rex::ui::ImGuiDialog {
     set_int("trialshd_menu_size", menu_size_);
     set_bool("trialshd_keyboard", keyboard_);
     set_int("trialshd_fps_cap", fps_cap_ ? 60 : 0);
+    auto set_pct = [&](const char* flag, int pct) {
+      if (!Has(flag)) return;
+      char v[16];
+      std::snprintf(v, sizeof(v), "%.2f", pct / 100.0);
+      rex::cvar::SetFlagByName(flag, v);  // shaders already built keep the startup value
+      toml.push_back({flag, v});
+    };
+    set_pct("trialshd_bloom", bloom_pct_);
+    set_pct("trialshd_dof", dof_pct_);
+    set_pct("trialshd_brightness", bright_pct_);
     if (window_ && window_->IsFullscreen() != fullscreen_) window_->SetFullscreen(fullscreen_);
 
     std::string error;
@@ -602,7 +657,10 @@ class TrialsMenu final : public rex::ui::ImGuiDialog {
       return;
     }
     REXLOG_INFO("[menu] settings saved to {}", config_path_.string());
-    SetStatus(true, "Saved");
+    if (online_problem.empty())
+      SetStatus(true, "Saved");
+    else
+      SetStatus(false, "Graphics saved; " + online_problem);
   }
 
   void SetStatus(bool ok, std::string s) {
@@ -627,6 +685,9 @@ class TrialsMenu final : public rex::ui::ImGuiDialog {
   int tab_ = 0;
   bool keyboard_ = true;
   bool fps_cap_ = false;
+  int bloom_pct_ = 100;
+  int dof_pct_ = 100;
+  int bright_pct_ = 100;
   float scale_ = 1.0f;
   std::string status_;
   bool status_ok_ = true;

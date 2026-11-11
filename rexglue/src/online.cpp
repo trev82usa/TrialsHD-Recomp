@@ -16,6 +16,8 @@
 #include <rex/logging.h>
 #include <rex/system/kernel_state.h>
 #include <rex/system/xenumerator.h>
+#include <rex/system/xio.h>
+#include <rex/system/xthread.h>
 #include <rex/system/xobject.h>
 
 #include "http_client.h"
@@ -26,6 +28,7 @@
 #include <cstdio>
 #include <cstring>
 #include <deque>
+#include <future>
 #include <map>
 #include <mutex>
 #include <sstream>
@@ -391,7 +394,15 @@ class StatsEnumerator : public rex::system::XEnumerator {
                   uint32_t num_rows, std::vector<Spec> specs)
       : XEnumerator(ks, 1, ResultsSize(specs, num_rows)),
         by_rank_(by_rank), rank_start_(rank_start), pivot_(pivot), num_rows_(num_rows),
-        specs_(std::move(specs)) {}
+        specs_(std::move(specs)) {
+    // Start every view's request straight away, in parallel; WriteItems just collects them.
+    for (auto& sp : specs_) {
+      std::string q = "/api/v1/leaderboard?fmt=text&view=" + std::to_string(sp.view) +
+                      "&count=" + std::to_string(num_rows_);
+      q += by_rank_ ? "&start=" + std::to_string(rank_start_) : "&around=" + Hex64(pivot_);
+      fetches_.push_back(std::async(std::launch::async, [q] { return ParseBoard(Call("GET", q, "")); }));
+    }
+  }
 
   uint32_t WriteItems(uint32_t buffer_ptr, uint8_t* buffer_data,
                       uint32_t* written_count) override {
@@ -400,11 +411,9 @@ class StatsEnumerator : public rex::system::XEnumerator {
     done_ = true;
     Mem m{buffer_data - buffer_ptr};
     std::vector<Board> boards;
-    for (auto& sp : specs_) {
-      std::string q = "/api/v1/leaderboard?fmt=text&view=" + std::to_string(sp.view) +
-                      "&count=" + std::to_string(num_rows_);
-      q += by_rank_ ? "&start=" + std::to_string(rank_start_) : "&around=" + Hex64(pivot_);
-      Board b = ParseBoard(Call("GET", q, ""));
+    for (size_t k = 0; k < specs_.size(); ++k) {
+      const auto& sp = specs_[k];
+      Board b = fetches_[k].get();
       REXLOG_WARN("[online] enumerate view {} ({}): {}", sp.view,
                   by_rank_ ? "by rank " + std::to_string(rank_start_) : "around " + Hex64(pivot_),
                   BoardLog(b));
@@ -419,6 +428,7 @@ class StatsEnumerator : public rex::system::XEnumerator {
   }
 
  private:
+  std::vector<std::future<Board>> fetches_;
   bool by_rank_;
   uint32_t rank_start_;
   uint64_t pivot_;
@@ -607,37 +617,56 @@ REX_HOOK_RAW(sub_82125270) {
     ctx.r3.u64 = 122;  // ERROR_INSUFFICIENT_BUFFER
     return;
   }
-  std::vector<Board> boards;
-  for (auto& sp : specs) {
-    std::string body = "{\"view\":" + std::to_string(sp.view) + ",\"xuids\":[";
-    for (size_t i = 0; i < xuids.size(); ++i) body += (i ? ",\"" : "\"") + Hex64(xuids[i]) + "\"";
-    body += "]}";
-    Board found = ParseBoard(Call("POST", "/api/v1/read?fmt=text", body));
-    // One row per requested XUID, in the order asked, empty if the player has no time yet.
-    Board b;
-    b.ok = found.ok;
-    b.total = found.total;
-    for (uint64_t x : xuids) {
-      auto it = std::find_if(found.rows.begin(), found.rows.end(),
-                             [x](const Row& r) { return r.xuid == x; });
-      if (it != found.rows.end()) {
-        b.rows.push_back(*it);
-      } else {
-        Row r;
-        r.xuid = x;
-        if (x == MyXuid()) r.name = PlayerName();
-        b.rows.push_back(r);
-      }
+  // Network work: one request per view, all at once (they used to run one after another and
+  // freeze the track list for ~1.5 s). With an XOVERLAPPED (the usual case) the game carries on
+  // drawing and picks the result up when we signal it; without one it waits for the parallel
+  // requests only.
+  auto fetch_and_write = [m, specs, xuids, results, have]() -> uint32_t {
+    std::vector<std::future<Board>> pending;
+    for (auto& sp : specs) {
+      std::string body = "{\"view\":" + std::to_string(sp.view) + ",\"xuids\":[";
+      for (size_t i = 0; i < xuids.size(); ++i) body += (i ? ",\"" : "\"") + Hex64(xuids[i]) + "\"";
+      body += "]}";
+      pending.push_back(std::async(std::launch::async, [body] {
+        return ParseBoard(Call("POST", "/api/v1/read?fmt=text", body));
+      }));
     }
-    REXLOG_WARN("[online] read view {}: {}", sp.view, BoardLog(b));
-    boards.push_back(std::move(b));
-  }
-  uint32_t result = WriteResults(m, results, have, specs, boards) ? 0 : 122;
+    std::vector<Board> boards;
+    for (size_t k = 0; k < specs.size(); ++k) {
+      Board found = pending[k].get();
+      // One row per requested XUID, in the order asked, empty if the player has no time yet.
+      Board b;
+      b.ok = found.ok;
+      b.total = found.total;
+      for (uint64_t x : xuids) {
+        auto it = std::find_if(found.rows.begin(), found.rows.end(),
+                               [x](const Row& r) { return r.xuid == x; });
+        if (it != found.rows.end()) {
+          b.rows.push_back(*it);
+        } else {
+          Row r;
+          r.xuid = x;
+          if (x == MyXuid()) r.name = PlayerName();
+          b.rows.push_back(r);
+        }
+      }
+      REXLOG_WARN("[online] read view {}: {}", specs[k].view, BoardLog(b));
+      boards.push_back(std::move(b));
+    }
+    return WriteResults(m, results, have, specs, boards) ? 0 : 122;
+  };
   if (overlapped) {
-    REX_KERNEL_STATE()->CompleteOverlappedImmediateEx(overlapped, result, 0, 0);
+    // Mark it pending for the requesting thread, finish in the background.
+    uint8_t* ov = m.p(overlapped);
+    rex::system::XOverlappedSetResult(ov, 997);  // ERROR_IO_PENDING
+    rex::system::XOverlappedSetContext(ov, rex::system::XThread::GetCurrentThreadHandle());
+    std::thread([fetch_and_write, overlapped] {
+      uint32_t result = fetch_and_write();
+      REX_KERNEL_STATE()->CompleteOverlappedEx(overlapped, result, result, 0);
+    }).detach();
     ctx.r3.u64 = 997;  // ERROR_IO_PENDING
   } else {
-    ctx.r3.u64 = result;
+    ctx.r3.u64 = fetch_and_write();
   }
 }
 

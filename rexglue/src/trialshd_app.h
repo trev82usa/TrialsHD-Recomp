@@ -12,6 +12,7 @@
 #include "keyboard_input.h"
 
 void StartTitleExitWatch();  // game_exit.cpp
+void RemoveSharedMemoryFiles(const char* when);  // game_exit.cpp
 #include <rex/rex_app.h>
 #include <rex/ui/keybinds.h>
 #include <rex/input/input_system.h>
@@ -40,6 +41,7 @@ class TrialshdApp : public rex::ReXApp {
   // runs headless (used for testing on machines without a GPU).
   void OnPreSetup(rex::RuntimeConfig& config) override {
     SetHighTimerResolution();
+    RemoveSharedMemoryFiles("left over from earlier runs");
     if (config.gpu_plugin.empty() && !std::getenv("TRIALSHD_NO_GPU")) config.gpu_plugin = "xenos";
     // Full game, not the Xbox Live Arcade trial: report every license bit as granted to
     // XamContentGetLicenseMask (ReXGlue defaults to 0 = trial).
@@ -53,6 +55,7 @@ class TrialshdApp : public rex::ReXApp {
     SetGuestFrameStats([] { return GetGuestFrameStats(); });
     StartProfilerIfEnabled();
     StartTitleExitWatch();
+    RemoveSharedMemoryFiles("(this run's; freed automatically when the game closes)");
     // After the SDK set its own input rule (in ConstructRuntime), so ours replaces it.
     if (runtime() && runtime()->input_system()) {
       auto* input = static_cast<rex::input::InputSystem*>(runtime()->input_system());
