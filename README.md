@@ -10,6 +10,10 @@ handled by ReXGlue's runtime (Direct3D 12 on Windows, Vulkan on Linux).
 >
 > Not affiliated with or endorsed by Ubisoft, RedLynx or Microsoft.
 
+> **Windows with an NVIDIA card (especially 120 Hz+ screens): if the game stutters or the frame
+> pacing feels uneven, press F1 → Graphics & Sound, tick _Frame limiter (even 60 fps)_ and press
+> Save.** It applies straight away. More tips are under [Troubleshooting](#troubleshooting).
+
 ## Features
 
 - **Native Windows and Linux builds**: no emulator to set up, just extract and run.
