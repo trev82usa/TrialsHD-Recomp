@@ -10,6 +10,16 @@ handled by ReXGlue's runtime (Direct3D 12 on Windows, Vulkan on Linux).
 >
 > Not affiliated with or endorsed by Ubisoft, RedLynx or Microsoft.
 
+<p align="center">
+  <img src="docs/screenshots/gameplay.jpg" alt="Trials HD running natively at 3440x1440" width="100%">
+</p>
+<p align="center">
+  <img src="docs/screenshots/main-menu.jpg" alt="Main menu" width="49%">
+  <img src="docs/screenshots/settings-menu.jpg" alt="F1 settings menu with live effect sliders" width="49%">
+</p>
+<p align="center"><sub>Running natively at 3440×1440 on Linux · main menu · the F1 settings menu with live
+Brightness / Bloom / Depth-of-field sliders</sub></p>
+
 > **Windows with an NVIDIA card (especially 120 Hz+ screens): if the game stutters or the frame
 > pacing feels uneven, press F1 → Graphics & Sound, tick _Frame limiter (even 60 fps)_ and press
 > Save.** It applies straight away. More tips are under [Troubleshooting](#troubleshooting).
