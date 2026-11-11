@@ -23,8 +23,8 @@ handled by ReXGlue's runtime (Direct3D 12 on Windows, Vulkan on Linux).
   own. See [Online leaderboards](#online-leaderboards).
 - **In-game settings menu (F1)** for your name, online, graphics, effects and sound, with no
   config file editing needed.
-- **Picture effect sliders**: turn down the game's strong **bloom**, **depth-of-field blur** and
-  **brightness**.
+- **Live picture effect sliders**: turn down the game's strong **bloom**, **depth-of-field blur**
+  and **brightness** while you play, and see the change instantly.
 - **Controller or keyboard**: any Xbox or PlayStation controller, or play on the keyboard.
 - **Optional 60 fps frame limiter** for smooth frame pacing on high-refresh screens and NVIDIA
   cards.
@@ -89,7 +89,7 @@ On a controller, **LB / RB** switch tabs and **B** closes the menu.
 |---|---|
 | **Player & Online** | Your name, password, play online on/off, server address, **Test connection** |
 | **Graphics & Sound** | Resolution scale (1x 720p / 2x 1440p / 3x 4K, with a suggestion for your screen), fullscreen, frame limiter, vsync, black bars on wide screens, texture filtering, mute, menu size |
-| **Effects** (on the Graphics tab) | **Brightness** 50–150%, **Bloom (glow)** 0–200%, **Depth of field (blur)** 0–100%. 100% is the original game. These apply after a restart. |
+| **Effects** (on the Graphics tab) | **Brightness** 50–150%, **Bloom (glow)** 0–200%, **Depth of field (blur)** 0–100%. 100% is the original game. They change the picture **instantly**, so open F1 mid-track and tune them where it matters. Press Save to keep them. |
 | **Controls** | The full list of controller and keyboard controls |
 
 Other keys: **F3** shows the FPS overlay, **F4** has every advanced engine setting.
@@ -97,7 +97,7 @@ Other keys: **F3** shows the FPS overlay, **F4** has every advanced engine setti
 Everything in the menu can also be set by hand in `trialshd.toml`. For example:
 
 ```toml
-trialshd_brightness = 0.85   # 0.5 - 1.5
+trialshd_brightness = 0.85   # 0.5 - 1.5   (the three effects also change live in F1)
 trialshd_bloom = 0.5         # 0 = off, 2 = double
 trialshd_dof = 0.0           # 0 = always sharp
 trialshd_fps_cap = 60        # 0 = off
@@ -129,7 +129,7 @@ The keyboard and a controller work at the same time. Turn keyboard play off in t
   limiter** in F1 → Graphics & Sound. On NVIDIA you can also set *Low Latency Mode: Off* and
   *Vertical sync: Use the 3D application setting* for `trialshd.exe` in the NVIDIA Control Panel.
 - **Too bright, washed out or blurry:** lower **Brightness**, **Bloom** and **Depth of field** in
-  F1 → Graphics & Sound → Effects, then restart the game.
+  F1 → Graphics & Sound → Effects. It changes as you drag; press Save to keep it.
 - **Slow on a laptop / integrated graphics:** set Texture filtering to Off, plug the charger in,
   and use the Performance power mode. On Linux with **fractional display scaling** (125%, 150%,
   ...), the game draws at the scaled-up size, so 150% means 2.25x the pixels. Set the display scale
@@ -279,9 +279,12 @@ Things this game needed beyond ReXGlue's automatic analysis:
 - **Host occlusion queries** stall the CPU on every query; they're disabled in `trialshd.toml`.
 - **Linux signals:** the runtime uses SIGSEGV for GPU memory write-watches during normal play, so
   a crash handler must chain to it rather than replace it.
-- **Bloom / DoF / brightness:** the game ships HLSL source in `data_misc.pak` and compiles it at
-  load time. The three linked copies of zlib's `inflate` are wrapped, and the decompressed
-  post-process shaders are edited in place, replacing text with text of the same length.
+- **Bloom / DoF / brightness (live):** the game ships HLSL source in `data_misc.pak` and compiles
+  it at load time. The three linked copies of zlib's `inflate` are wrapped, and the decompressed
+  post-process shaders are rewritten in place (comments stripped to make room, same total length).
+  They get a new `float4 trialsFx` parameter, defaulting to the original look. Every frame the game
+  calls its effect `SetValue("dofParameters", …)` through an indirect call. That call's entry in the
+  recompiled dispatch table is redirected so `trialsFx` is set right after, from the slider values.
 - **Keyboard driver order:** the 0.9 SDK's InputSystem stops at the first driver that answers
   capabilities/keystroke queries, and its "nop" driver always answers, so an added driver must be
   moved to the front of the list.

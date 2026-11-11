@@ -364,9 +364,18 @@ class TrialsMenu final : public rex::ui::ImGuiDialog {
     char shown[16];
     std::snprintf(shown, sizeof(shown), "%d%%%%", lo + step * 5);
     ImGui::SetNextItemWidth(S(220));
-    if (ImGui::SliderInt(label, &step, 0, (hi - lo) / 5, shown)) *pct = lo + step * 5;
-    Help((std::string(help) + " Applies after a restart.").c_str());
-    if (*pct != BootPct(flag)) {
+    const bool live = GetBool("trialshd_live_effects", false);
+    if (ImGui::SliderInt(label, &step, 0, (hi - lo) / 5, shown)) {
+      *pct = lo + step * 5;
+      if (live) {  // the picture follows the slider straight away; Save keeps it
+        char v[16];
+        std::snprintf(v, sizeof(v), "%.2f", *pct / 100.0);
+        rex::cvar::SetFlagByName(flag, v);
+      }
+    }
+    Help((std::string(help) + (live ? " Changes straight away; press Save to keep it."
+                                    : " Applies after a restart.")).c_str());
+    if (!live && *pct != BootPct(flag)) {
       ImGui::SameLine();
       ImGui::TextColored(ImVec4(1, 0.8f, 0.3f, 1), "(after restart)");
     }
@@ -477,7 +486,8 @@ class TrialsMenu final : public rex::ui::ImGuiDialog {
     }
 
     if (Has("trialshd_bloom") || Has("trialshd_brightness")) {
-      ImGui::SeparatorText("Effects (after restart)");
+      ImGui::SeparatorText(GetBool("trialshd_live_effects", false) ? "Effects"
+                                                                   : "Effects (after restart)");
       PctSlider("trialshd_brightness", "Brightness", &bright_pct_, 50, 150,
                 "How bright the picture is while riding. 100% is the original game; turn it down "
                 "if bright scenes look washed out.");
