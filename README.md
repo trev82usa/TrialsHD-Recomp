@@ -164,6 +164,8 @@ not next to the program.
 
 ## Getting your game files
 
+> **Got the game package but not sure what to do with it?** [XBLA Installer](https://github.com/trev82usa/XBLA-Installer) is a standalone version of the installer (Windows .exe / Linux), handy if you want it without downloading the game build first.
+
 This project doesn't include or link to the game. You need **your own copy of Trials HD**, the
 Xbox Live Arcade game bought on an Xbox 360 (title ID `5841095A`). The port always runs as the
 full game, so please only use it with a copy you've paid for, not the free trial.
