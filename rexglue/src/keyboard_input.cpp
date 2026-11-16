@@ -17,11 +17,17 @@
 #include <atomic>
 #include <cstring>
 #include <deque>
+#include <chrono>
+#include <cmath>
 #include <mutex>
 
 REXCVAR_DEFINE_BOOL(trialshd_keyboard, true, "TrialsHD",
                     "Play with the keyboard: arrows/WASD ride, Enter/Space = A, Backspace = B, "
                     "Escape/P = Start (pause), Tab/R = Back (restart)");
+REXCVAR_DEFINE_INT32(trialshd_keyboard_smoothing, 150, "TrialsHD",
+                     "Keyboard throttle/brake/lean ramp-up time in milliseconds, like easing a "
+                     "trigger or stick in. 0 = instant (all or nothing)")
+    .range(0, 1000);
 
 namespace {
 
@@ -38,6 +44,7 @@ constexpr uint16_t kUp = 0x0001, kDown = 0x0002, kLeft = 0x0004, kRight = 0x0008
 
 // Virtual key codes (Windows VK values, same on every platform in the SDK).
 enum : uint8_t {
+  kVkSHIFT = 0x10, kVkLSHIFT = 0xA0, kVkRSHIFT = 0xA1,
   kVkBACK = 0x08, kVkTAB = 0x09, kVkRETURN = 0x0D, kVkESCAPE = 0x1B, kVkSPACE = 0x20,
   kVkLEFT = 0x25, kVkUP = 0x26, kVkRIGHT = 0x27, kVkDOWN = 0x28,
   kVkNUMPAD2 = 0x62, kVkNUMPAD4 = 0x64, kVkNUMPAD6 = 0x66, kVkNUMPAD8 = 0x68,
@@ -99,18 +106,52 @@ class KeyboardDriver final : public rex::input::InputDriver,
     if (k(kVkNUMPAD4)) buttons |= kLeft;
     if (k(kVkNUMPAD6)) buttons |= kRight;
 
+    // Analog feel: throttle, brake and lean build up while a key is held and ease off when it's
+    // released, like squeezing a trigger or tilting a stick. Shift = fine control (half range).
+    const bool fine = k(kVkSHIFT) || k(kVkLSHIFT) || k(kVkRSHIFT);
+    const float cap = fine ? 0.5f : 1.0f;
+    float throttle, brake, lean;
+    {
+      std::lock_guard<std::mutex> lock(analog_mu_);
+      const auto now = std::chrono::steady_clock::now();
+      float dt = last_update_.time_since_epoch().count()
+                     ? std::chrono::duration<float>(now - last_update_).count()
+                     : 0.0f;
+      last_update_ = now;
+      dt = std::min(dt, 0.1f);
+      const int ms = rex::cvar::Query<int32_t>("trialshd_keyboard_smoothing");
+      auto approach = [&](float& v, float target) {
+        if (ms <= 0) {
+          v = target;
+          return;
+        }
+        // Full range in `ms` when pressing; twice as fast when letting go.
+        const bool releasing = std::fabs(target) < std::fabs(v) || target * v < 0;
+        const float step = dt * 1000.0f / float(ms) * (releasing ? 2.0f : 1.0f);
+        if (v < target) v = std::min(target, v + step);
+        else v = std::max(target, v - step);
+      };
+      approach(throttle_, up ? cap : 0.0f);
+      approach(brake_, down ? cap : 0.0f);
+      approach(lean_, left == right ? 0.0f : (right ? cap : -cap));
+      throttle = throttle_;
+      brake = brake_;
+      lean = lean_;
+    }
+
     auto& g = out->gamepad;
     g.buttons = buttons;
     // Up/Down: accelerate/brake while riding, and the stick's up/down for menus (Trials only
     // uses left/right on the stick while riding).
-    g.right_trigger = up ? 0xFF : 0;
-    g.left_trigger = down ? 0xFF : 0;
-    g.thumb_lx = int16_t(left == right ? 0 : (right ? 32767 : -32768));
+    g.right_trigger = uint8_t(std::lround(throttle * 255.0f));
+    g.left_trigger = uint8_t(std::lround(brake * 255.0f));
+    g.thumb_lx = int16_t(std::lround(lean * 32767.0f));
     g.thumb_ly = int16_t(up == down ? 0 : (up ? 32767 : -32768));
 
     // Count a new packet whenever the state changes (games use it to spot input).
     uint64_t sig = uint64_t(buttons) | (uint64_t(up) << 16) | (uint64_t(down) << 17) |
-                   (uint64_t(left) << 18) | (uint64_t(right) << 19);
+                   (uint64_t(g.right_trigger) << 20) | (uint64_t(g.left_trigger) << 28) |
+                   (uint64_t(uint16_t(g.thumb_lx)) << 36);
     if (last_sig_.exchange(sig) != sig) {
       ++packet_;
     }
@@ -209,6 +250,9 @@ class KeyboardDriver final : public rex::input::InputDriver,
   std::atomic<uint32_t> packet_{0};
   std::atomic<int> logged_keys_{0}, logged_states_{0};
   std::atomic<uint64_t> last_sig_{0};
+  std::mutex analog_mu_;
+  std::chrono::steady_clock::time_point last_update_{};
+  float throttle_ = 0, brake_ = 0, lean_ = 0;
 };
 
 }  // namespace

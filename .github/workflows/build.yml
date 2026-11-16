@@ -78,16 +78,32 @@ jobs:
             -DCMAKE_PREFIX_PATH="$REXSDK"
           cmake --build out
 
+      - uses: actions/setup-python@v5
+        if: env.HAVE_XEX == '1'
+        with:
+          python-version: "3.12"
+
+      - name: Build the installer exe
+        if: env.HAVE_XEX == '1'
+        run: |
+          python -m pip install --quiet pyinstaller
+          python -m PyInstaller --onefile --windowed --name TrialsHD-Installer --paths tools tools/install_game.py
+
       - name: Package
         if: env.HAVE_XEX == '1'
         run: |
-          mkdir -p package/TrialsHD/assets
+          mkdir -p package/TrialsHD/assets package/TrialsHD/tools
           cp rexglue/out/*.exe rexglue/out/*.dll rexglue/trialshd.toml rexglue/THIRD_PARTY_LICENSES.txt package/TrialsHD/
+          cp dist/TrialsHD-Installer.exe tools/install_game.py package/TrialsHD/
+          cp tools/stfs_extract.py package/TrialsHD/tools/
+          echo "Run TrialsHD-Installer.exe (next to the game) to fill this folder from your game package." > package/TrialsHD/assets/PUT_GAME_FILES_HERE.txt
           cat > package/TrialsHD/README.txt <<'EOF'
           Trials HD - native Windows build (ReXGlue)
 
-          1. Copy your extracted game files (default.xex and the data folder) into the
-             "assets" folder next to trialshd.exe.
+          1. Double-click TrialsHD-Installer.exe, pick your Trials HD package file
+             (Content/0000000000000000/5841095A/000D0000/<long name>) and press Install.
+             It fills the "assets" folder and checks the game version. (Or copy default.xex
+             and the data folder into "assets" yourself.)
           2. Double-click trialshd.exe.
           3. If anything goes wrong, send crash.txt (if present) and the newest file from "logs".
           EOF
@@ -187,11 +203,16 @@ jobs:
           objcopy --add-gnu-debuglink=trialshd.debug $P/trialshd
           cp "$REXSDK"/lib/librexruntime.so "$REXSDK"/lib/librexgpu-xenos.so "$REXSDK"/lib/libTracyClient.so $P/
           cp rexglue/trialshd.toml rexglue/THIRD_PARTY_LICENSES.txt $P/
-          echo "Put default.xex and the data folder here." > $P/assets/PUT_GAME_FILES_HERE.txt
+          mkdir -p $P/tools && cp tools/stfs_extract.py $P/tools/
+          cp tools/install_game.py $P/ && chmod +x $P/install_game.py
+          echo "Run ./install_game.py (next to the game) to fill this folder from your game package." > $P/assets/PUT_GAME_FILES_HERE.txt
           cat > $P/README.txt <<'TXT'
           Trials HD - native Linux build (ReXGlue)
 
-          1. Copy your game files (default.xex and the data folder) into the "assets" folder.
+          1. Run ./install_game.py, pick your Trials HD package file and press Install
+             (the window needs python3-tk; without it, it asks in the terminal). It fills the
+             "assets" folder and checks the game version. (Or copy default.xex and the data
+             folder into "assets" yourself.)
           2. Run ./trialshd from this folder (or double-click it in your file manager).
 
           Requirements: 64-bit Linux with glibc 2.38 or newer (Ubuntu 24.04+, Fedora 39+,

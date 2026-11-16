@@ -23,6 +23,10 @@ trialshd_brightness = 1.0
 trialshd_bloom = 1.0
 trialshd_dof = 1.0
 
+# Keyboard: ms for throttle/brake/lean to build up to full while a key is held (0 = instant).
+# Hold Shift for half throttle/lean. Also in the F1 menu (Controls).
+trialshd_keyboard_smoothing = 150
+
 # Performance diagnostics: writes profile.txt next to the exe every 10 seconds showing where the
 # CPU time goes. Costs a little speed; set to false once it is no longer needed.
 trialshd_profile = false

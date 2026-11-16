@@ -59,10 +59,13 @@ players and an Intel UHD 620 laptop.
 
 1. Download the [latest release](../../releases/latest): **TrialsHD-windows-….zip** for Windows or
    **TrialsHD-linux-….tar.gz** for Linux, and extract it.
-2. Get your game files (`default.xex` and the `data` folder) from your own copy of Trials HD.
-   See [Getting your game files](#getting-your-game-files) below.
-3. Copy `default.xex` and `data` into the `assets` folder next to `trialshd.exe`.
-4. Run `trialshd.exe` (`./trialshd` on Linux).
+2. Copy your Trials HD package file off your Xbox 360 (see
+   [Getting your game files](#getting-your-game-files) below).
+3. Run the installer next to the game: **TrialsHD-Installer.exe** on Windows (nothing else
+   needed), `./install_game.py` on Linux. Pick the package file and press **Install**. It fills the
+   `assets` folder and checks the game version.
+4. Run `trialshd.exe` (`./trialshd` on Linux). If the game files are missing or a different
+   version, the game says so in a popup instead of crashing.
 5. Optional: press **F1** in game to set your name and password and go online.
 
 **Updating:** copy the new `trialshd.exe` (or `trialshd`) and the `.dll`/`.so` files over the old
@@ -180,32 +183,22 @@ Xbox Live Arcade games are stored as one package file (an STFS "LIVE" file) on t
 If your console has a hard drive that you can connect to the PC, the same tools can read it and the
 package is in the same folder.
 
-### 2. Extract the files
+### 2. Install them with the installer
 
-**Easiest:** open the package file in **Velocity** or **Horizon** (the same tools as above), which
-show its contents, and extract everything to a folder.
+Run **TrialsHD-Installer.exe** (Windows) or `./install_game.py` (Linux; the window needs
+`python3-tk`, otherwise it asks in the terminal). Pick the package file and press **Install**. It
+extracts `default.xex` and the `data` folder into `assets` and checks every block of the package.
 
-Disc-image tools such as extract-xiso won't work: Trials HD is a download, stored as an STFS
-package rather than a disc image (ISO).
+**The port is built from one exact version of the game (default.xex version 0.0.1.2).** If your
+copy is a different version, the installer tells you. If you have a title update for it (the
+package from `Content/0000000000000000/5841095A/000B0000/`, or a `default.xexp`), pick it in the
+second box together with **xextool.exe** (xorloser's XexTool, not included) and the installer
+applies it; the original is kept as `default.xex.orig`.
 
-**Or with the included script:** you need [Python 3](https://www.python.org/downloads/) (no extra
-packages). Download this repository (**Code → Download ZIP**), open a terminal in its folder and run:
-
-```
-python tools/stfs_extract.py "<path to the package file>" extracted
-```
-
-This checks every block of the package and writes the contents to the `extracted` folder. Either
-way you end up with:
-
-```
-extracted/
-  default.xex      <- the game executable
-  data/            <- all the game data
-  ArcadeInfo.xml   (not needed)
-```
-
-Copy `default.xex` and `data` into the `assets` folder next to `trialshd.exe`.
+Prefer doing it by hand? Open the package in **Velocity** or **Horizon** and extract everything,
+or run `python tools/stfs_extract.py "<package>" extracted`, then copy `default.xex` and `data`
+into the `assets` folder next to `trialshd.exe`. Disc-image tools such as extract-xiso won't work:
+Trials HD is a download, stored as an STFS package rather than a disc image (ISO).
 
 ## Online leaderboards
 
@@ -273,6 +266,8 @@ to build.
 | `server/` | The leaderboard server (Python, SQLite), Dockerfile and setup guide |
 | `server/worker/` | The same server for Cloudflare Workers + D1 (free tier), with a migration script |
 | `.github/workflows/build.yml` | Windows and Linux builds: SDK download, `rexglue codegen`, compile, package |
+| `tools/install_game.py` | The installer (window or terminal): extracts the package, checks the version, applies a title update |
+| `rexglue/src/game_files_check.h` | Checks `default.xex` at startup and explains a missing or different copy |
 | `tools/` | STFS extractor, XEX unpacker, and the scanners used to find function entries |
 
 ## Notes for developers

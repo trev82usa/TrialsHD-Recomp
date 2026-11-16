@@ -8,6 +8,7 @@
 #include <rex/filesystem.h>
 #include "crash_handler.h"
 #include "perf_tools.h"
+#include "game_files_check.h"
 #include "trials_menu.h"
 #include "keyboard_input.h"
 
@@ -100,14 +101,18 @@ class TrialshdApp : public rex::ReXApp {
   // Find the game files without a command-line argument: an "assets" folder next to the
   // exe, or default.xex placed right next to the exe.
   void OnConfigurePaths(rex::PathConfig& paths) override {
-    if (!paths.game_data_root.empty()) return;   // --game_data_root given: respect it
-    auto exe_dir = rex::filesystem::GetExecutableFolder();
-    for (const auto& dir : {exe_dir / "assets", exe_dir}) {
-      std::error_code ec;
-      if (std::filesystem::exists(dir / "default.xex", ec)) {
-        paths.game_data_root = dir;
-        return;
+    if (paths.game_data_root.empty()) {   // --game_data_root given: respect it
+      auto exe_dir = rex::filesystem::GetExecutableFolder();
+      paths.game_data_root = exe_dir / "assets";   // so the message names the right folder
+      for (const auto& dir : {exe_dir / "assets", exe_dir}) {
+        std::error_code ec;
+        if (std::filesystem::exists(dir / "default.xex", ec)) {
+          paths.game_data_root = dir;
+          break;
+        }
       }
     }
+    // Wrong or missing game files: say so clearly instead of crashing later.
+    thd::RequireGameFiles(paths.game_data_root);
   }
 };

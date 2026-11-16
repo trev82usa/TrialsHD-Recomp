@@ -339,6 +339,7 @@ class TrialsMenu final : public rex::ui::ImGuiDialog {
     mute_ = GetBool("audio_mute", false);
     menu_size_ = std::clamp(GetInt("trialshd_menu_size", 0), 0, 4);
     keyboard_ = GetBool("trialshd_keyboard", true);
+    kb_smooth_ = std::clamp(GetInt("trialshd_keyboard_smoothing", 150), 0, 400);
     fps_cap_ = GetInt("trialshd_fps_cap", 0) > 0;
     BootPct("trialshd_bloom");
     bloom_pct_ = std::clamp(int(GetDouble("trialshd_bloom", 1.0) * 100 + 0.5), 0, 200);
@@ -530,10 +531,19 @@ class TrialsMenu final : public rex::ui::ImGuiDialog {
     ImGui::Checkbox("Play with the keyboard", &keyboard_);
     Help("The keyboard works like a controller (alongside a real one). Turn off if it gets in "
          "the way.");
+    if (Has("trialshd_keyboard_smoothing")) {
+      ImGui::SetNextItemWidth(S(220));
+      if (ImGui::SliderInt("Keyboard smoothing", &kb_smooth_, 0, 400, kb_smooth_ ? "%d ms" : "Off"))
+        rex::cvar::SetFlagByName("trialshd_keyboard_smoothing", std::to_string(kb_smooth_));
+      Help("How long throttle, brake and lean take to build up to full when you hold a key, "
+           "like easing a trigger or stick in. Tap for small inputs, hold for full. Higher = "
+           "gentler. Off = all or nothing. Changes straight away; press Save to keep it.");
+    }
     if (ImGui::BeginTable("keys", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
       Row("Accelerate", "Up arrow / W");
       Row("Brake", "Down arrow / S");
       Row("Lean back / forward", "Left / Right arrows, A / D");
+      Row("Fine control (half throttle / lean)", "Hold Shift");
       Row("Select (A)", "Enter / Space");
       Row("Back (B)", "Backspace");
       Row("Pause (Start)", "Escape / P");
@@ -647,6 +657,7 @@ class TrialsMenu final : public rex::ui::ImGuiDialog {
     set_bool("fullscreen", fullscreen_);
     set_int("trialshd_menu_size", menu_size_);
     set_bool("trialshd_keyboard", keyboard_);
+    set_int("trialshd_keyboard_smoothing", kb_smooth_);
     set_int("trialshd_fps_cap", fps_cap_ ? 60 : 0);
     auto set_pct = [&](const char* flag, int pct) {
       if (!Has(flag)) return;
@@ -694,6 +705,7 @@ class TrialsMenu final : public rex::ui::ImGuiDialog {
   int menu_size_ = 0;
   int tab_ = 0;
   bool keyboard_ = true;
+  int kb_smooth_ = 150;
   bool fps_cap_ = false;
   int bloom_pct_ = 100;
   int dof_pct_ = 100;
