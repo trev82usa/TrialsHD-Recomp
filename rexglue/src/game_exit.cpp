@@ -5,6 +5,7 @@
 // from inside, which can hang - the window stays (or the process keeps running invisibly).
 // There is no dashboard to return to, so we just save the log and end the process. Scores are
 // uploaded the moment they are set, so nothing is lost.
+#include "game_version.h"
 #include <rex/hook.h>
 #include <rex/logging.h>
 #include <rex/system/kernel_state.h>
@@ -28,7 +29,7 @@ namespace {
 
 // sub_82124A38: the game's XLaunchNewImage wrapper; it always ends in XamLoaderLaunchTitle
 // (return to dashboard), so it's only reached when the game wants to leave.
-REX_HOOK_RAW(sub_82124A38) { QuitNow("return to dashboard"); }
+REX_HOOK_RAW(G_82124A38) { QuitNow("return to dashboard"); }
 
 // Not hooked: sub_82128508 (a periodic check that only calls HalReturnToFirmware when it fails).
 // Safety net for any other route (e.g. XamLoaderTerminateTitle from the startup code): once the

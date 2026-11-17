@@ -1,0 +1,155 @@
+# Trials HD Title Update 4 (default.xex 0.0.4.2) fixes. Generated from trialshd_config.toml with
+# tools/match_functions.py, plus a re-run of find_data_code_ptrs / find_code_built_ptrs on TU4.
+
+# The game's setjmp/longjmp (MSVC CRT; used e.g. by libpng error handling). Recompiled code must
+# redirect these to native implementations; running them as ordinary guest code returns to the
+# wrong place with clobbered registers (seen on hardware as a null r31 in sub_8232B608).
+setjmp_address = 0x822F8B70
+longjmp_address = 0x822F8850
+
+# Speed: keep these PowerPC registers in C++ locals (CPU registers) instead of the shared context
+# struct, so the compiler can optimise them. Volatile/argument registers only; the non-volatile and
+# reserved ones stay in the context because setjmp/longjmp and thread switches rely on them.
+# NOT non_argument_as_local: this game passes values between functions in r12 (the stack probe at
+# 0x822FB134 takes the size in r12; exception funclets get the frame pointer in r12). Making r12 a
+# local zeroes it and the game hangs on a black screen at startup.
+ctr_as_local = true
+xer_as_local = true
+cr_as_local = true
+skip_msr = true
+
+[functions]
+# C++ "this-adjust" thunk (addi r3,r3,8; b ...) that another thunk jumps into
+0x821C32F0 = { name = "thunk_adjust_this_821C32F0", size = 8 }
+# Function starts reached only by tail calls
+0x8221C6F0 = { name = "sub_8221C6F0" }
+0x821DD8E8 = { name = "sub_821DD8E8" }
+
+# Code reached only through pointers in data (vtables, callback/handler tables); found by
+# tools/find_data_code_ptrs.py. Without these, indirect calls hit 'unregistered function'.
+0x820FFC78 = { name = "sub_820FFC78" }
+0x820FFAE8 = { name = "sub_820FFAE8" }
+0x82108F88 = { name = "sub_82108F88" }
+0x8211A150 = { name = "sub_8211A150" }
+0x8212A350 = { name = "sub_8212A350" }
+0x8212BAF4 = { name = "sub_8212BAF4" }
+0x8212BC6C = { name = "sub_8212BC6C" }
+0x82152060 = { name = "sub_82152060" }
+0x821605E0 = { name = "sub_821605E0" }
+0x82162760 = { name = "sub_82162760" }
+0x821C1318 = { name = "sub_821C1318" }
+0x821C6AF0 = { name = "sub_821C6AF0" }
+0x821C6B00 = { name = "sub_821C6B00" }
+0x821CC478 = { name = "sub_821CC478" }
+0x821CD2E0 = { name = "sub_821CD2E0" }
+0x821CE120 = { name = "sub_821CE120" }
+0x821D0E90 = { name = "sub_821D0E90" }
+0x821DB718 = { name = "sub_821DB718" }
+0x821DE0F0 = { name = "sub_821DE0F0" }
+0x82210F58 = { name = "sub_82210F58" }
+0x82216C00 = { name = "sub_82216C00" }
+0x822253E8 = { name = "sub_822253E8" }
+0x82233BD4 = { name = "sub_82233BD4" }
+0x82233EF0 = { name = "sub_82233EF0" }
+0x82233F94 = { name = "sub_82233F94" }
+0x822341FC = { name = "sub_822341FC" }
+0x822344A4 = { name = "sub_822344A4" }
+0x822349FC = { name = "sub_822349FC" }
+0x82234F3C = { name = "sub_82234F3C" }
+0x82234FAC = { name = "sub_82234FAC" }
+0x822350DC = { name = "sub_822350DC" }
+0x8223537C = { name = "sub_8223537C" }
+0x822356E8 = { name = "sub_822356E8" }
+0x82235EF0 = { name = "sub_82235EF0" }
+0x8223D6B8 = { name = "sub_8223D6B8" }
+0x8223D8D8 = { name = "sub_8223D8D8" }
+0x822449E8 = { name = "sub_822449E8" }
+0x822FB874 = { name = "sub_822FB874" }
+0x822FBFCC = { name = "sub_822FBFCC" }
+0x82307450 = { name = "sub_82307450" }
+0x82355FC0 = { name = "sub_82355FC0" }
+0x82355FDC = { name = "sub_82355FDC" }
+0x82356138 = { name = "sub_82356138" }
+0x823564A4 = { name = "sub_823564A4" }
+0x823565E4 = { name = "sub_823565E4" }
+0x82356CA4 = { name = "sub_82356CA4" }
+0x823571FC = { name = "sub_823571FC" }
+0x8237F7AC = { name = "sub_8237F7AC" }
+0x823A35E8 = { name = "sub_823A35E8" }
+0x823A3830 = { name = "sub_823A3830" }
+0x823A3C60 = { name = "sub_823A3C60" }
+0x824119F0 = { name = "sub_824119F0" }
+0x82413BB0 = { name = "sub_82413BB0" }
+0x82413BEC = { name = "sub_82413BEC" }
+0x82414630 = { name = "sub_82414630" }
+0x82414790 = { name = "sub_82414790" }
+0x8242E32C = { name = "sub_8242E32C" }
+0x8242E33C = { name = "sub_8242E33C" }
+0x824DC660 = { name = "sub_824DC660" }
+0x8250C2E8 = { name = "sub_8250C2E8" }
+0x82516E40 = { name = "sub_82516E40" }
+0x82584848 = { name = "sub_82584848" }
+0x82586428 = { name = "sub_82586428" }
+0x82586488 = { name = "sub_82586488" }
+0x8264FF90 = { name = "sub_8264FF90" }
+
+# Callback functions whose address is built in code (lis/addi) and handed out at runtime;
+# found by tools/find_code_built_ptrs.py. First hit at 0x820F0868 on real hardware.
+0x820F0868 = { name = "sub_820F0868" }
+0x821895D0 = { name = "sub_821895D0" }
+0x8223F218 = { name = "sub_8223F218" }
+0x822F484C = { name = "sub_822F484C" }
+0x823A3C80 = { name = "sub_823A3C80" }
+0x823A3C90 = { name = "sub_823A3C90" }
+0x823A3CA0 = { name = "sub_823A3CA0" }
+0x823A3CB0 = { name = "sub_823A3CB0" }
+0x823A3CC0 = { name = "sub_823A3CC0" }
+0x823A3CD0 = { name = "sub_823A3CD0" }
+0x823A3CE0 = { name = "sub_823A3CE0" }
+0x823A3CF0 = { name = "sub_823A3CF0" }
+0x823A3D00 = { name = "sub_823A3D00" }
+0x823A3D10 = { name = "sub_823A3D10" }
+0x82427848 = { name = "sub_82427848" }
+0x8245D268 = { name = "sub_8245D268" }
+
+# Round 1: more pointer-referenced functions (re-scan after the analysis regrouped code)
+0x8267A000 = { name = "sub_8267A000" }
+
+# TU4 round 1 (find_data_code_ptrs / find_code_built_ptrs)
+0x820FFF78 = { name = "sub_820FFF78" }
+0x82100710 = { name = "sub_82100710" }
+0x82105C00 = { name = "sub_82105C00" }
+0x821C6AE8 = { name = "sub_821C6AE8" }
+0x821C6AF8 = { name = "sub_821C6AF8" }
+0x821CBA50 = { name = "sub_821CBA50" }
+0x821CBA58 = { name = "sub_821CBA58" }
+0x821CBA60 = { name = "sub_821CBA60" }
+0x821CBA70 = { name = "sub_821CBA70" }
+0x821CBA78 = { name = "sub_821CBA78" }
+0x821CBA80 = { name = "sub_821CBA80" }
+0x821CBA88 = { name = "sub_821CBA88" }
+0x821CBD08 = { name = "sub_821CBD08" }
+0x821CBD10 = { name = "sub_821CBD10" }
+0x821CBD20 = { name = "sub_821CBD20" }
+0x821CBD28 = { name = "sub_821CBD28" }
+0x821CBD30 = { name = "sub_821CBD30" }
+0x821CBD38 = { name = "sub_821CBD38" }
+0x821CBD40 = { name = "sub_821CBD40" }
+0x821CE118 = { name = "sub_821CE118" }
+0x821E0ED8 = { name = "sub_821E0ED8" }
+0x8223B458 = { name = "sub_8223B458" }
+0x8223D6D8 = { name = "sub_8223D6D8" }
+0x8223D6F8 = { name = "sub_8223D6F8" }
+0x8223D878 = { name = "sub_8223D878" }
+0x8223D898 = { name = "sub_8223D898" }
+0x8223D8B8 = { name = "sub_8223D8B8" }
+0x8223D8F8 = { name = "sub_8223D8F8" }
+0x8223D918 = { name = "sub_8223D918" }
+0x8223D938 = { name = "sub_8223D938" }
+0x8223D958 = { name = "sub_8223D958" }
+0x8223D978 = { name = "sub_8223D978" }
+0x8223D998 = { name = "sub_8223D998" }
+0x823A37B8 = { name = "sub_823A37B8" }
+0x823A37E0 = { name = "sub_823A37E0" }
+0x823A3808 = { name = "sub_823A3808" }
+0x824DC7E0 = { name = "sub_824DC7E0" }

@@ -8,6 +8,7 @@
 //    (plus a short call stack) and writes the totals to profile.txt next to the exe every 10 s.
 //    Addresses are written as module + offset; they are turned into function names offline
 //    with the PDB from the build's "symbols" artifact.
+#include "game_version.h"
 #include "perf_tools.h"
 
 #include <rex/cvar.h>
@@ -119,11 +120,11 @@ void FrameCap() {
 
 }  // namespace
 
-REX_EXTERN(__imp__sub_82143E10);
-REX_HOOK_RAW(sub_82143E10) {
+REX_EXTERN(TRIALSHD_IMP(G_82143E10));
+REX_HOOK_RAW(G_82143E10) {
   FrameCap();
   OnGuestFrame();
-  __imp__sub_82143E10(ctx, base);
+  TRIALSHD_IMP(G_82143E10)(ctx, base);
 }
 
 rex::ui::FrameStats GetGuestFrameStats() {

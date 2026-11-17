@@ -21,6 +21,7 @@ set(TRIALSHD_SOURCES
     src/keyboard_input.cpp
     src/game_exit.cpp
     src/post_effects.cpp
+    src/dlc_loader.cpp
 )
 
 if(WIN32)
@@ -30,3 +31,11 @@ else()
 endif()
 
 rexglue_setup_target(trialshd GPU_PLUGINS xenos)
+
+# Build for Title Update 4 instead of the original release: codegen must run on a default.xex
+# patched with tools/apply_title_update.py and trialshd_config_tu4.toml (the CI workflow's
+# "game_version: tu4" option does both). Hook addresses come from src/game_version.h.
+option(TRIALSHD_TU4 "Build for Trials HD Title Update 4" OFF)
+if(TRIALSHD_TU4)
+    target_compile_definitions(trialshd PRIVATE TRIALSHD_TU4=1)
+endif()

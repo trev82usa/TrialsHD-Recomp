@@ -11,6 +11,7 @@
 //
 // Everything is logged with the "[online]" prefix so the layouts and ids can be checked against a
 // real session.
+#include "game_version.h"
 #include <rex/cvar.h>
 #include <rex/hook.h>
 #include <rex/logging.h>
@@ -509,10 +510,10 @@ class FriendsEnumerator : public rex::system::XEnumerator {
 // ---------------------------------------------------------------------------------------------
 
 // XUserGetSigninInfo(userIndex, flags, XUSER_SIGNIN_INFO*)
-REX_EXTERN(__imp__sub_82125078);
-REX_HOOK_RAW(sub_82125078) {
+REX_EXTERN(TRIALSHD_IMP(G_82125078));
+REX_HOOK_RAW(G_82125078) {
   uint32_t user = ctx.r3.u32, info = ctx.r5.u32;
-  __imp__sub_82125078(ctx, base);
+  TRIALSHD_IMP(G_82125078)(ctx, base);
   if (ctx.r3.u32 != 0 || user != 0 || !info || PlayerName().empty()) return;
   Mem m{base};
   m.w64(info, MyXuid());
@@ -523,26 +524,26 @@ REX_HOOK_RAW(sub_82125078) {
 }
 
 // XUserGetSigninState(userIndex)
-REX_EXTERN(__imp__sub_821251D8);
-REX_HOOK_RAW(sub_821251D8) {
+REX_EXTERN(TRIALSHD_IMP(G_821251D8));
+REX_HOOK_RAW(G_821251D8) {
   uint32_t user = ctx.r3.u32;
-  __imp__sub_821251D8(ctx, base);
+  TRIALSHD_IMP(G_821251D8)(ctx, base);
   if (user == 0 && ctx.r3.u32 == 1 && Online()) ctx.r3.u64 = 2;
 }
 
 // XUserGetXUID(userIndex, XUID*)
-REX_EXTERN(__imp__sub_821254A8);
-REX_HOOK_RAW(sub_821254A8) {
+REX_EXTERN(TRIALSHD_IMP(G_821254A8));
+REX_HOOK_RAW(G_821254A8) {
   uint32_t user = ctx.r3.u32, out = ctx.r4.u32;
-  __imp__sub_821254A8(ctx, base);
+  TRIALSHD_IMP(G_821254A8)(ctx, base);
   if (ctx.r3.u32 == 0 && user == 0 && out && !PlayerName().empty()) Mem{base}.w64(out, MyXuid());
 }
 
 // XSessionWriteStats(hSession, xuid, numViews, XSESSION_VIEW_PROPERTIES*, XOVERLAPPED*)
 //   XSESSION_VIEW_PROPERTIES { DWORD viewId; DWORD numProperties; XUSER_PROPERTY* }  12 bytes
 //   XUSER_PROPERTY           { DWORD propertyId; (pad) XUSER_DATA value; }           24 bytes
-REX_EXTERN(__imp__sub_821BE3F0);
-REX_HOOK_RAW(sub_821BE3F0) {
+REX_EXTERN(TRIALSHD_IMP(G_821BE3F0));
+REX_HOOK_RAW(G_821BE3F0) {
   Mem m{base};
   uint64_t xuid = ctx.r4.u64;
   uint32_t num_views = ctx.r5.u32, views = ctx.r6.u32;
@@ -571,36 +572,36 @@ REX_HOOK_RAW(sub_821BE3F0) {
   json += "]}";
   REXLOG_WARN("[online] XSessionWriteStats xuid={}{}", Hex64(xuid), logline);
   if (Online()) QueueUpload(json);
-  __imp__sub_821BE3F0(ctx, base);
+  TRIALSHD_IMP(G_821BE3F0)(ctx, base);
 }
 
 // XSessionFlushStats(hSession, overlapped): only logged.
-REX_EXTERN(__imp__sub_821BE348);
-REX_HOOK_RAW(sub_821BE348) {
+REX_EXTERN(TRIALSHD_IMP(G_821BE348));
+REX_HOOK_RAW(G_821BE348) {
   REXLOG_WARN("[online] XSessionFlushStats");
-  __imp__sub_821BE348(ctx, base);
+  TRIALSHD_IMP(G_821BE348)(ctx, base);
 }
 
 // XUserCreateStatsEnumeratorByRank(titleId, rankStart, numRows, numSpecs, specs, pcb, phEnum)
-REX_EXTERN(__imp__sub_82125348);
-REX_HOOK_RAW(sub_82125348) {
-  if (!Online()) return __imp__sub_82125348(ctx, base);
+REX_EXTERN(TRIALSHD_IMP(G_82125348));
+REX_HOOK_RAW(G_82125348) {
+  if (!Online()) return TRIALSHD_IMP(G_82125348)(ctx, base);
   ctx.r3.u64 = CreateStatsEnumerator(Mem{base}, true, ctx.r4.u32, 0, ctx.r5.u32, ctx.r6.u32,
                                      ctx.r7.u32, ctx.r8.u32, ctx.r9.u32);
 }
 
 // XUserCreateStatsEnumeratorByXuid(titleId, xuidPivot, numRows, numSpecs, specs, pcb, phEnum)
-REX_EXTERN(__imp__sub_821253A8);
-REX_HOOK_RAW(sub_821253A8) {
-  if (!Online()) return __imp__sub_821253A8(ctx, base);
+REX_EXTERN(TRIALSHD_IMP(G_821253A8));
+REX_HOOK_RAW(G_821253A8) {
+  if (!Online()) return TRIALSHD_IMP(G_821253A8)(ctx, base);
   ctx.r3.u64 = CreateStatsEnumerator(Mem{base}, false, 0, ctx.r4.u64, ctx.r5.u32, ctx.r6.u32,
                                      ctx.r7.u32, ctx.r8.u32, ctx.r9.u32);
 }
 
 // XUserReadStats(titleId, numXuids, xuids, numSpecs, specs, pcbResults, results, overlapped)
-REX_EXTERN(__imp__sub_82125270);
-REX_HOOK_RAW(sub_82125270) {
-  if (!Online()) return __imp__sub_82125270(ctx, base);
+REX_EXTERN(TRIALSHD_IMP(G_82125270));
+REX_HOOK_RAW(G_82125270) {
+  if (!Online()) return TRIALSHD_IMP(G_82125270)(ctx, base);
   Mem m{base};
   uint32_t num_xuids = std::min<uint32_t>(ctx.r4.u32, 100), xuids_ptr = ctx.r5.u32;
   auto specs = ReadSpecs(m, ctx.r6.u32, ctx.r7.u32);
@@ -671,9 +672,9 @@ REX_HOOK_RAW(sub_82125270) {
 }
 
 // XFriendsCreateEnumerator(userIndex, startingIndex, friendsToReturn, pcbBuffer, phEnum)
-REX_EXTERN(__imp__sub_821BD0F0);
-REX_HOOK_RAW(sub_821BD0F0) {
-  if (!Online()) return __imp__sub_821BD0F0(ctx, base);
+REX_EXTERN(TRIALSHD_IMP(G_821BD0F0));
+REX_HOOK_RAW(G_821BD0F0) {
+  if (!Online()) return TRIALSHD_IMP(G_821BD0F0)(ctx, base);
   Mem m{base};
   uint32_t start = ctx.r4.u32, count = std::min<uint32_t>(ctx.r5.u32, 100);
   uint32_t pcb = ctx.r6.u32, phandle = ctx.r7.u32;
@@ -691,9 +692,9 @@ REX_HOOK_RAW(sub_821BD0F0) {
 // XSessionLeaveRemote/Local(hSession, count, users, overlapped): ReXGlue does not implement the
 // message (XGI 0x000B0013), so the game saw a failure after every posted time and showed
 // "Please reconnect". Leaving a session needs no work here: report success.
-REX_EXTERN(__imp__sub_821BE150);
-REX_HOOK_RAW(sub_821BE150) {
-  if (!Online()) return __imp__sub_821BE150(ctx, base);
+REX_EXTERN(TRIALSHD_IMP(G_821BE150));
+REX_HOOK_RAW(G_821BE150) {
+  if (!Online()) return TRIALSHD_IMP(G_821BE150)(ctx, base);
   uint32_t overlapped = ctx.r6.u32;
   if (overlapped) {
     REX_KERNEL_STATE()->CompleteOverlappedImmediateEx(overlapped, 0, 0, 0);

@@ -27,6 +27,7 @@
 // SetValue(name, data, bytes) method; we wrap that method (by redirecting its entry in the
 // recompiled code's indirect-call table) and set "trialsFx" right after, from the current
 // slider values. So the F1 sliders change the picture immediately.
+#include "game_version.h"
 #include <rex/cvar.h>
 #include <rex/hook.h>
 #include <rex/logging.h>
@@ -200,17 +201,17 @@ void AfterInflate(uint8_t* base, uint32_t strm, uint32_t out_before) {
 }  // namespace
 
 #define TRIALSHD_WRAP_INFLATE(name)                         \
-  REX_EXTERN(__imp__##name);                                \
+  REX_EXTERN(TRIALSHD_IMP(name));                                \
   REX_HOOK_RAW(name) {                                      \
     const uint32_t strm = ctx.r3.u32;                       \
     const uint32_t before = strm ? NextOut(base, strm) : 0; \
-    __imp__##name(ctx, base);                               \
+    TRIALSHD_IMP(name)(ctx, base);                               \
     AfterInflate(base, strm, before);                       \
   }
 
-TRIALSHD_WRAP_INFLATE(sub_82174280)
-TRIALSHD_WRAP_INFLATE(sub_82333DB8)
-TRIALSHD_WRAP_INFLATE(sub_82553918)
+TRIALSHD_WRAP_INFLATE(G_82174280)
+TRIALSHD_WRAP_INFLATE(G_82333DB8)
+TRIALSHD_WRAP_INFLATE(G_82553918)
 
 // ---------------------------------------------------------------------------------------------
 // Live values
@@ -224,7 +225,7 @@ std::atomic<bool> g_hook_installed{false};
 
 bool NameIs(uint8_t* base, uint32_t ptr, const char* want) {
   // Names passed by the post-process code are string literals inside the game image.
-  if (ptr < 0x82000000u || ptr >= 0x82830000u) return false;
+  if (ptr < REX_IMAGE_BASE || ptr >= REX_IMAGE_BASE + REX_IMAGE_SIZE) return false;
   return std::strcmp(reinterpret_cast<const char*>(base + ptr), want) == 0;
 }
 
@@ -264,7 +265,7 @@ void InstallSetValueSpy(uint8_t* base, uint32_t post_obj) {
     std::memcpy(&v, base + a, 4);
     return __builtin_bswap32(v);
   };
-  const uint32_t effect = be32(post_obj + 0x1C37C);  // same field the game reads (r18)
+  const uint32_t effect = be32(post_obj + TRIALSHD_POST_EFFECT_FIELD);  // same field the game reads (r18)
   if (!effect) return;
   const uint32_t vtable = be32(effect);
   const uint32_t target = vtable ? be32(vtable + 12) : 0;
@@ -288,9 +289,9 @@ void InstallSetValueSpy(uint8_t* base, uint32_t post_obj) {
 
 // sub_825F0278: the post-process pass (draws postCombine*, sets dofParameters etc.), r3 = the
 // post-process object.
-REX_EXTERN(__imp__sub_825F0278);
-REX_HOOK_RAW(sub_825F0278) {
+REX_EXTERN(TRIALSHD_IMP(G_825F0278));
+REX_HOOK_RAW(G_825F0278) {
   const uint32_t obj = ctx.r3.u32;
   if (!g_hook_installed) InstallSetValueSpy(base, obj);
-  __imp__sub_825F0278(ctx, base);
+  TRIALSHD_IMP(G_825F0278)(ctx, base);
 }

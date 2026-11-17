@@ -22,6 +22,12 @@ namespace thd {
 
 constexpr uint32_t kTitleId = 0x5841095A;
 constexpr uint32_t kRequiredVersion = 258;  // XEX execution info "version" this build was made from (0.0.1.2)
+#if defined(TRIALSHD_TU4)
+// Title Update 4 build: default.xex 0.0.1.2 plus the update's default.xexp next to it (the
+// engine applies it while loading), or a default.xex already patched to 0.0.4.2
+// (tools/apply_title_update.py).
+constexpr uint32_t kTu4Version = 0x402;
+#endif
 
 inline uint32_t Be32(const std::vector<uint8_t>& d, size_t o) {
   return o + 4 <= d.size() ? (uint32_t(d[o]) << 24) | (uint32_t(d[o + 1]) << 16) |
@@ -70,6 +76,22 @@ inline std::string CheckGameFiles(const std::filesystem::path& dir) {
   }
   if (title != kTitleId)
     return "default.xex is not from Trials HD (title ID 5841095A)." + install_hint;
+#if defined(TRIALSHD_TU4)
+  if (version == kTu4Version) return {};
+  if (version == kRequiredVersion) {
+    std::ifstream p(dir / "default.xexp", std::ios::binary);
+    std::vector<uint8_t> h(0x2000);
+    p.read(reinterpret_cast<char*>(h.data()), std::streamsize(h.size()));
+    h.resize(size_t(p.gcount()));
+    uint32_t target = 0;
+    for (uint32_t i = 0; h.size() >= 24 && i < Be32(h, 20) && 24 + i * 8 + 8 <= h.size(); ++i)
+      if (Be32(h, 24 + i * 8) == 0x000005FF) target = Be32(h, Be32(h, 24 + i * 8 + 4) + 4);
+    if (target == kTu4Version) return {};
+    return "This build of Trials HD needs Title Update 4.\n\nPut default.xexp from the "
+           "Title Update 4 package (Media ID 22E417BF) next to default.xex in:\n" + dir.string() +
+           "\n\n(tools/stfs_extract.py <update file> <folder> extracts it.)";
+  }
+#endif
   if (version != kRequiredVersion)
     return "Your default.xex is version " + VersionString(version) +
            ",\nbut this build needs version " + VersionString(kRequiredVersion) +

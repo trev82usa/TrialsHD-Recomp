@@ -14,6 +14,7 @@
 
 void StartTitleExitWatch();  // game_exit.cpp
 void RemoveSharedMemoryFiles(const char* when);  // game_exit.cpp
+void InstallDlcPackages();  // dlc_loader.cpp
 #include <rex/rex_app.h>
 #include <rex/ui/keybinds.h>
 #include <rex/input/input_system.h>
@@ -56,6 +57,7 @@ class TrialshdApp : public rex::ReXApp {
     SetGuestFrameStats([] { return GetGuestFrameStats(); });
     StartProfilerIfEnabled();
     StartTitleExitWatch();
+    InstallDlcPackages();
     RemoveSharedMemoryFiles("(this run's; freed automatically when the game closes)");
     // After the SDK set its own input rule (in ConstructRuntime), so ours replaces it.
     if (runtime() && runtime()->input_system()) {

@@ -13,7 +13,22 @@ BASE = 0x82000000
 CODE = (0x820F0000, 0x826F7EC8)
 WINDOW = 12   # instructions after a lis in which the matching addi/ori may appear
 
+def _sections(img):
+    pe_off = struct.unpack_from('<I', img, 0x3C)[0]
+    n = struct.unpack_from('<H', img, pe_off + 6)[0]
+    opt = struct.unpack_from('<H', img, pe_off + 20)[0]
+    out = []
+    for i in range(n):
+        o = pe_off + 24 + opt + i * 40
+        name = img[o:o + 8].rstrip(b'\0').decode('latin1')
+        size, va = struct.unpack_from('<II', img, o + 8)
+        out.append((name, 0x82000000 + va, 0x82000000 + va + size))
+    return out
+
 pe = open(sys.argv[1], 'rb').read()
+_secs = _sections(pe)
+# Code = .text through the last .embsec_ section; data = .rdata and .data (from the image).
+CODE = (min(a for n, a, b in _secs if n == '.text'), max(b for n, a, b in _secs if n in ('.text', '.embsec_')))
 def w(a): return struct.unpack('>I', pe[a - BASE:a - BASE + 4])[0]
 known = {int(x, 16) for x in re.findall(r'\{ 0x([0-9A-Fa-f]+), ', open(sys.argv[2]).read())}
 

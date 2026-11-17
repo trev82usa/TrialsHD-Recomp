@@ -40,6 +40,8 @@ in game at 3440×1440, 60 FPS on Linux</sub></p>
 - **Controller or keyboard**: any Xbox or PlayStation controller, or play on the keyboard.
 - **Optional 60 fps frame limiter** for smooth frame pacing on high-refresh screens and NVIDIA
   cards.
+- **Title Update 4 and DLC track packs**: drop in your update and DLC files and they're used
+  automatically (see [Title Update 4 and DLC](#title-update-4-and-dlc)).
 - Quits properly from the game's own Exit option.
 
 ## Status
@@ -202,6 +204,50 @@ or run `python tools/stfs_extract.py "<package>" extracted`, then copy `default.
 into the `assets` folder next to `trialshd.exe`. Disc-image tools such as extract-xiso won't work:
 Trials HD is a download, stored as an STFS package rather than a disc image (ISO).
 
+## Title Update 4 and DLC
+
+**DLC (extra track packs).** Make a folder called `dlc` next to the game (or run the game once
+and it makes one) and put your DLC packages in it, **exactly as they came off your Xbox**. They
+are the files in `Content/0000000000000000/5841095A/00000002/` on the console's drive (copy them
+with Velocity or Horizon, the same way as the game). Don't unpack or rename them. Next time the
+game starts it installs them (`[dlc] installed …` in the log) and the tracks show up with a **+**
+in the track list. They stay installed after that.
+
+**Title Update 4.** The game's last update (version 0.0.4.2, for Media ID **22E417BF**) is needed
+for the DLC tracks to appear. Use the **-tu4** download (TrialsHD-…-tu4), and put the update's
+`default.xexp` in `assets` next to `default.xex`:
+
+```
+assets/
+  default.xex      <- your original game file (0.0.1.2)
+  default.xexp     <- from the Title Update 4 package
+  data/
+```
+
+To get `default.xexp`, download Title Update 4 for Trials HD (title ID 5841095A, Media ID
+22E417BF) and extract it with the included script:
+
+```
+python tools/stfs_extract.py "<the downloaded update file>" tu4
+```
+
+The game applies the update itself when it loads. The normal (non-tu4) download keeps working
+with just `default.xex`, without the update or DLC tracks.
+
+### For other ReXGlue ports
+
+The tools here aren't specific to Trials HD:
+
+- `tools/apply_title_update.py base.xex <update package or .xexp> patched.xex` applies a title
+  update the same way the console does and writes a plain `default.xex` to recompile. A static
+  recomp can't load new code at runtime, so updates have to be applied before `rexglue codegen`.
+- `tools/match_functions.py old.pe new.pe [addr ...]` pairs up every function between two
+  versions (code compared with branch targets and addresses masked out, then call-graph and
+  neighbour matching), so hooks and config entries can be moved to the updated version.
+  `tools/xex_unpack.py` gives you the `.pe` images.
+- `rexglue/src/dlc_loader.cpp` installs STFS content packages from a `dlc` folder through the
+  SDK's `ContentManager::InstallContent`, and drops into any project.
+
 ## Online leaderboards
 
 Xbox Live is gone, so the game's leaderboards, friends lists and "post your time" talk to a small
@@ -264,13 +310,15 @@ to build.
 | `rexglue/src/keyboard_input.*` | Keyboard controls (an extra input driver that acts as controller 1) |
 | `rexglue/src/post_effects.cpp` | Bloom / depth-of-field / brightness: edits the game's post-process shader text as it's loaded |
 | `rexglue/src/game_exit.cpp` | Quits cleanly from the in-game Exit option; frees the Linux shared-memory file |
+| `rexglue/src/dlc_loader.cpp` | Installs DLC packages from the `dlc` folder on startup |
+| `rexglue/src/game_version.h`, `rexglue/trialshd_config_tu4.toml` | Hook addresses and recompile config for the original release and Title Update 4 |
 | `rexglue/src/perf_tools.*` | FPS counter, frame limiter, sampling profiler |
 | `server/` | The leaderboard server (Python, SQLite), Dockerfile and setup guide |
 | `server/worker/` | The same server for Cloudflare Workers + D1 (free tier), with a migration script |
 | `.github/workflows/build.yml` | Windows and Linux builds: SDK download, `rexglue codegen`, compile, package |
 | `tools/install_game.py` | The installer (window or terminal): extracts the package, checks the version, applies a title update |
 | `rexglue/src/game_files_check.h` | Checks `default.xex` at startup and explains a missing or different copy |
-| `tools/` | STFS extractor, XEX unpacker, and the scanners used to find function entries |
+| `tools/` | STFS extractor, XEX unpacker, title-update patcher, function matcher, and the scanners used to find function entries |
 
 ## Notes for developers
 
