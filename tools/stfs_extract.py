@@ -114,6 +114,22 @@ class STFS:
             parts.append(byidx[p]['name']); p = byidx[p]['parent']
         return '/'.join(reversed(parts))
 
+def read_package(path):
+    """Return {path_in_package: bytes} for every file in an STFS package."""
+    s = STFS(path)
+    ents = s.entries()
+    files = {}
+    for e in ents:
+        if e['is_dir']:
+            continue
+        buf, remaining = bytearray(), e['size']
+        for b in s.chain(e['start'], e['blocks'], e['consecutive']):
+            d = s.read_block(b)
+            buf += d[:min(remaining, 0x1000)]; remaining -= 0x1000
+            if remaining <= 0: break
+        files[s.path_of(ents, e)] = bytes(buf)
+    return files
+
 def main():
     pkg, out = sys.argv[1], sys.argv[2]
     s = STFS(pkg)
