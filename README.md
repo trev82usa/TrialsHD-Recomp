@@ -213,8 +213,8 @@ with Velocity or Horizon, the same way as the game). Don't unpack or rename them
 game starts it installs them (`[dlc] installed …` in the log) and the tracks show up with a **+**
 in the track list. They stay installed after that.
 
-**Title Update 4.** The game's last update (version 0.0.4.2, for Media ID **22E417BF**) is needed
-for the DLC tracks to appear. Use the **-tu4** download (TrialsHD-…-tu4), and put the update's
+**Title Update 4.** The game's last update (version 0.0.4.2, for Media ID **22E417BF**) is the
+version tested with the DLC tracks. Use the **-tu4** download (TrialsHD-…-tu4), and put the update's
 `default.xexp` in `assets` next to `default.xex`:
 
 ```
